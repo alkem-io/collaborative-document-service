@@ -5,9 +5,7 @@
   "author": "Alkemio Foundation",
   "license": "EUPL-1.2",
   "main": "main.ts",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "scripts": {},
   "keywords": [
     "collaboration",
     "hocuspocus",

@@ -79,4 +79,4 @@ Contributions are welcome\! If you have suggestions for improvements or new feat
 
 ## **📄 License**
 
-This project is licensed under the [EUPL-1.2 License](https://www.google.com/search?q=EUPL-1.2).
+This project is licensed under the [EUPL-1.2 License](https://www.google.com/search?q=EUPL-1.2) - see the [LICENSE](./LICENSE) file for details.
