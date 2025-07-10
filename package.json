@@ -1,0 +1,45 @@
+{
+  "name": "collaborative-document-service",
+  "version": "0.0.1",
+  "description": "Backend microservice, supporting real-time multi-user collaboration on a shared document.",
+  "author": "Alkemio Foundation",
+  "license": "EUPL-1.2",
+  "main": "main.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "collaboration",
+    "hocuspocus",
+    "ws"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alkem-io/collaborative-document-service.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alkem-io/collaborative-document-service/issues"
+  },
+  "homepage": "https://github.com/alkem-io/collaborative-document-service#readme",
+  "dependencies": {
+    "@nestjs/common": "^11.1.3",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.3",
+    "@nestjs/microservices": "^11.1.3",
+    "@nestjs/platform-fastify": "^11.1.3",
+    "nest-winston": "^1.10.2",
+    "typescript": "^5.8.3",
+    "yaml": "^2.8.0"
+  },
+  "engines": {
+    "node": ">=22",
+    "npm": ">=10"
+  },
+  "volta": {
+    "node": "22.17.0",
+    "npm": "10.9.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.2"
+  }
+}
