@@ -4,8 +4,11 @@
   "description": "Backend microservice, supporting real-time multi-user collaboration on a shared document.",
   "author": "Alkemio Foundation",
   "license": "EUPL-1.2",
-  "main": "main.ts",
-  "scripts": {},
+  "main": "dist/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "run": "nest start"
+  },
   "keywords": [
     "collaboration",
     "hocuspocus",
