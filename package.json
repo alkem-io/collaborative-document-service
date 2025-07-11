@@ -5,9 +5,10 @@
   "author": "Alkemio Foundation",
   "license": "EUPL-1.2",
   "main": "dist/main.js",
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
-    "run": "nest start"
+    "run": "nest start",
+    "start:dev": "nest start --watch"
   },
   "keywords": [
     "collaboration",
@@ -23,6 +24,7 @@
   },
   "homepage": "https://github.com/alkem-io/collaborative-document-service#readme",
   "dependencies": {
+    "@hocuspocus/server": "^3.1.12",
     "@nestjs/common": "^11.1.3",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.1.3",
@@ -41,6 +43,12 @@
     "npm": "10.9.2"
   },
   "devDependencies": {
-    "@types/node": "^22.16.2"
+    "@types/node": "^22.16.2",
+    "@typescript-eslint/eslint-plugin": "^8.36.0",
+    "@typescript-eslint/parser": "^8.36.0",
+    "eslint": "^9.30.1",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.1"
   }
 }
