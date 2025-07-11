@@ -6,7 +6,6 @@ cache:
   directories:
     - node_modules
 before_install:
-  - cd service
   - npm i -g pnpm@9.14.2
 install:
   - pnpm install
