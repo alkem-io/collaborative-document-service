@@ -1,6 +1,6 @@
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module.js';
+import { AppModule } from './app.module';
 import {FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 
 const isProd = process.env.NODE_ENV === 'production';
