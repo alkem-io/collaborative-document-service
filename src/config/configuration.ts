@@ -1,8 +1,13 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import * as YAML from 'yaml';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const YAML_CONFIG_FILENAME = 'config.yml';
+
+const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
+const __dirname = path.dirname(__filename); // get the name of the directory
 
 export default () => {
   const rawYaml = readFileSync(

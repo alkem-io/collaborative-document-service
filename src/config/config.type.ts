@@ -28,8 +28,5 @@ export interface ConfigType {
     collaboration: {
       enabled: boolean;
     };
-    rest: {
-      port: number;
-    };
   };
 }
