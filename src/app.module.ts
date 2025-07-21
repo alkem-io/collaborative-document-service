@@ -1,9 +1,9 @@
 import { WinstonModule } from 'nest-winston';
 import { MiddlewareConsumer, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { WinstonConfigService } from './config/winston.config.js';
-import configuration from './config/configuration.js';
-import { HocuspocusModule } from './hocuspocus/hocuspocus.module.js';
+import { WinstonConfigService } from './config/winston.config';
+import configuration from './config/configuration';
+import { HocuspocusModule } from './hocuspocus/hocuspocus.module';
 
 @Module({
   imports: [

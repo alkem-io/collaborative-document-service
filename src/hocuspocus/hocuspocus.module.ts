@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { HocuspocusServer } from './hocuspocus.server.js';
+import { HocuspocusServer } from './hocuspocus.server';
 
 @Module({
   providers: [HocuspocusServer],

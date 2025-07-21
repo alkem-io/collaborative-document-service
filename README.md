@@ -47,9 +47,11 @@ Make sure you have Node.js and npm (or yarn) installed:
    ```
 
 2. Install backend dependencies:  
+   Note: this project uses pnpm, swc etc - so not npm. 
+
    Navigate to the project and install dependencies:  
    ```
-   npm install \# or yarn install
+   pnpm install 
    ```
 
 ### **Running the Service**
@@ -57,7 +59,11 @@ Make sure you have Node.js and npm (or yarn) installed:
 1. Start the Hocuspocus Server (Microservice):  
    From this project directory:  
    ```
-   npm run start
+   pnpm run build
+   ```
+
+   ```
+   pnpm run start
    ```
 
    The server will usually run on `ws://localhost:1234` by default, but check your server configuration.
