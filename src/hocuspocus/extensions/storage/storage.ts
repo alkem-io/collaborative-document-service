@@ -6,7 +6,7 @@ import {
 } from '@hocuspocus/server';
 
 const storage = new Map<string, Y.Doc>();
-
+// todo: to be properly implemented and provided to HocuspocusServer
 class Storage implements Extension {
   /**
    * Called once, when the first client connects to the server, during the creation of a new document.

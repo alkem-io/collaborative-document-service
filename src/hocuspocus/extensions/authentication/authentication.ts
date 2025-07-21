@@ -3,7 +3,7 @@ import {
   onAuthenticatePayload,
   onConnectPayload,
 } from '@hocuspocus/server';
-
+// todo: to be properly implemented and provided to HocuspocusServer
 class Authentication implements Extension {
   /**
    * Called once, when a client is connecting.

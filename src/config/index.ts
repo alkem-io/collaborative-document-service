@@ -1,5 +1,3 @@
 export * from './config.type';
-export * from './configuration';
+export { default } from './configuration';
 export * from './winston.config';
-
-
