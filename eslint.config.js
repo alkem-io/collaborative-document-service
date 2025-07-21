@@ -1,12 +1,16 @@
-const { defineConfig, globalIgnores } = require('eslint/config');
+import { defineConfig, globalIgnores } from 'eslint/config';
 
-const tsParser = require('@typescript-eslint/parser');
-const typescriptEslintEslintPlugin = require('@typescript-eslint/eslint-plugin');
-const prettier = require('eslint-plugin-prettier');
-const globals = require('globals');
-const js = require('@eslint/js');
+import tsParser from '@typescript-eslint/parser';
+import typescriptEslintEslintPlugin from '@typescript-eslint/eslint-plugin';
+import prettier from 'eslint-plugin-prettier';
+import globals from 'globals';
+import js from '@eslint/js';
+import { FlatCompat } from '@eslint/eslintrc';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
-const { FlatCompat } = require('@eslint/eslintrc');
+const __filename = fileURLToPath(import.meta.url); // get the resolved path to the file
+const __dirname = path.dirname(__filename); // get the name of the directory
 
 const compat = new FlatCompat({
   baseDirectory: __dirname,
@@ -15,7 +19,7 @@ const compat = new FlatCompat({
 });
 const env = (prod, dev) => (process.env.NODE_ENV === 'production' ? prod : dev);
 
-module.exports = defineConfig([
+export default defineConfig([
   {
     languageOptions: {
       parser: tsParser,
@@ -61,11 +65,7 @@ module.exports = defineConfig([
 
       'no-multiple-empty-lines': 'error',
     },
+    files: ['**/*.{ts,tsx}'],
   },
-  globalIgnores([
-    '**/node_modules/**/*',
-    '**/dist**',
-    '**/.eslintrc.js',
-    'src/migrations',
-  ]),
+  globalIgnores(['**/node_modules/**/*', '**/dist**']),
 ]);

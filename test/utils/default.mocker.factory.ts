@@ -10,8 +10,7 @@ export const defaultMockerFactory = (token: InjectionToken | undefined) => {
   if (typeof token === 'function') {
     // Mock all class methods with vi.fn()
     const methodNames = Object.getOwnPropertyNames(token.prototype).filter(
-      prop =>
-        prop !== 'constructor' && typeof token.prototype[prop] === 'function'
+      prop => prop !== 'constructor' && typeof token.prototype[prop] === 'function'
     );
     const mock: any = {};
     for (const method of methodNames) {
@@ -27,7 +26,5 @@ export const defaultMockerFactory = (token: InjectionToken | undefined) => {
     }
   }
 
-  throw Error(
-    `[Default Mocker] No provider found for token: ${JSON.stringify(token)}`
-  );
+  throw Error(`[Default Mocker] No provider found for token: ${JSON.stringify(token)}`);
 };

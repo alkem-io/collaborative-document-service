@@ -10,10 +10,7 @@ const __filename = fileURLToPath(import.meta.url); // get the resolved path to t
 const __dirname = path.dirname(__filename); // get the name of the directory
 
 export default () => {
-  const rawYaml = readFileSync(
-    join(__dirname, '../../', YAML_CONFIG_FILENAME),
-    'utf8',
-  );
+  const rawYaml = readFileSync(join(__dirname, '../../', YAML_CONFIG_FILENAME), 'utf8');
 
   const doc = YAML.parseDocument(rawYaml);
   const envConfig = process.env;

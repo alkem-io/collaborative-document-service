@@ -23,19 +23,14 @@ const consoleLoggingProdFormat: logform.Format[] = [
 
 @Injectable()
 export class WinstonConfigService {
-  constructor(
-    private readonly configService: ConfigService<ConfigType, true>,
-  ) {}
+  constructor(private readonly configService: ConfigService<ConfigType, true>) {}
 
   createWinstonModuleOptions() {
-    const { enabled, level, json } = this.configService.get(
-      'monitoring.logging',
-      { infer: true },
-    );
+    const { enabled, level, json } = this.configService.get('monitoring.logging', { infer: true });
     const transports: any[] = [
       new winston.transports.Console({
         format: winston.format.combine(
-          ...(json ? consoleLoggingProdFormat : consoleLoggingStandardFormat),
+          ...(json ? consoleLoggingProdFormat : consoleLoggingStandardFormat)
         ),
         level,
         silent: !enabled,

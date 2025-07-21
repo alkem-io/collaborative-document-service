@@ -14,7 +14,8 @@
     "baseUrl": "./",
     "paths": {
       "@/src/*": ["src/*"],
-      "@/tests/*": ["tests/*"]
+      "@/tests/*": ["test/*"],
+      "@common/*": ["src/common/*"]
     },
     "target": "esnext"
   },

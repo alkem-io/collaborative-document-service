@@ -6,4 +6,3 @@ import { HocuspocusServer } from './hocuspocus.server';
   exports: [HocuspocusServer],
 })
 export class HocuspocusModule {}
-

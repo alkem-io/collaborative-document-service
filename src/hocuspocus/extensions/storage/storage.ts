@@ -1,9 +1,5 @@
 import * as Y from 'yjs';
-import {
-  Extension,
-  onLoadDocumentPayload,
-  onStoreDocumentPayload,
-} from '@hocuspocus/server';
+import { Extension, onLoadDocumentPayload, onStoreDocumentPayload } from '@hocuspocus/server';
 
 const storage = new Map<string, Y.Doc>();
 // todo: to be properly implemented and provided to HocuspocusServer
