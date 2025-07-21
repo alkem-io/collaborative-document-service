@@ -31,7 +31,9 @@ settings:
   application:
     address: ${ADDRESS}:0.0.0.0
     # The port on which the service is running
-    port: ${PORT}:4004
+    ws_port: ${WS_PORT}:4004
+    #
+    rest_port: ${REST_PORT}:4005
     # queue for communication with the collaboration microservice
     queue: ${COMMUNICATION_QUEUE}:alkemio-collaboration
     # MILLISECONDS wait time for a response after a request on the message queue

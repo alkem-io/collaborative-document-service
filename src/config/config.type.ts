@@ -17,7 +17,8 @@ export interface ConfigType {
   };
   settings: {
     application: {
-      port: number;
+      ws_port: number;
+      rest_port: number;
       queue: string;
       queue_response_timeout: number;
       queue_request_retries: number;
