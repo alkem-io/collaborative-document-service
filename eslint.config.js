@@ -47,6 +47,8 @@ export default defineConfig([
       'prettier'
     ),
 
+    ignores: ['**/node_modules/**/*', '**/dist**'],
+
     rules: {
       quotes: ['error', 'single'],
       'no-console': env(1, 0),
@@ -67,5 +69,4 @@ export default defineConfig([
     },
     files: ['**/*.{ts,tsx}'],
   },
-  globalIgnores(['**/node_modules/**/*', '**/dist**']),
 ]);

@@ -3,6 +3,7 @@ import { join } from 'path';
 import * as YAML from 'yaml';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { ConfigType } from '@src/config';
 
 const YAML_CONFIG_FILENAME = 'config.yml';
 
@@ -23,7 +24,7 @@ export default () => {
     },
   });
 
-  return doc.toJSON() as Record<string, any>;
+  return doc.toJSON() as ConfigType;
 };
 
 function buildYamlNodeValue(nodeValue: any, envConfig: any) {
