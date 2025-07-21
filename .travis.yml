@@ -1,7 +1,7 @@
 dist: focal
 language: node_js
 node_js:
-  - v22.16.0
+  - v22.17.0
 cache:
   directories:
     - node_modules
@@ -9,8 +9,6 @@ before_install:
   - npm i -g pnpm@9.14.2
 install:
   - pnpm install
-services:
-  - mysql
 script:
   - pnpm run test
 

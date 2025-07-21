@@ -1,3 +1,5 @@
+import { expect } from 'vitest';
+
 // Utility to test async functions that should throw (Vitest compatible)
 export const asyncToThrow = async (
   actual: () => Promise<unknown>,

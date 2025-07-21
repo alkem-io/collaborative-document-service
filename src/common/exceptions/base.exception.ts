@@ -1,20 +1,18 @@
-import { LogContext, AlkemioErrorStatus } from '@common/enums/index';
+import { randomUUID } from 'crypto';
+import { LogContext } from '../enums';
+import { ExceptionDetails } from './exception.details';
 
 export class BaseException extends Error {
-  private readonly context: LogContext;
-  private readonly code: AlkemioErrorStatus | undefined;
-
-  constructor(error: string, context: LogContext, code?: AlkemioErrorStatus) {
-    super(error);
-    this.code = code;
-    this.context = context;
-  }
-
-  public getContext(): LogContext {
-    return this.context;
-  }
-
-  public getCode(): AlkemioErrorStatus | undefined {
-    return this.code;
+  public readonly errorId: string = randomUUID();
+  constructor(
+    /**
+     * No identifiable information or UUIDs in the message, please. Use the `details` instead.
+     */
+    public message: string,
+    public context: LogContext,
+    public details?: ExceptionDetails
+  ) {
+    super(message);
+    this.name = this.constructor.name;
   }
 }
