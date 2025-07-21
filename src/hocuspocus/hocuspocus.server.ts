@@ -1,11 +1,11 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
 import { Server } from '@hocuspocus/server';
 import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
 import { ConfigService } from '@nestjs/config';
 import { ConfigType } from '../config';
 
 @Injectable()
-export class HocuspocusServer {
+export class HocuspocusServer implements OnModuleInit {
   private readonly hocuspocusServer: Server;
 
   constructor(
@@ -18,7 +18,13 @@ export class HocuspocusServer {
       port,
       extensions: [],
     });
-    this.hocuspocusServer.listen();
+  }
+  async onModuleInit() {
+    await this.hocuspocusServer.listen();
+  }
+
+  async onModuleDestroy() {
+    await this.hocuspocusServer.destroy();
   }
 
   public getServer(): Server {
