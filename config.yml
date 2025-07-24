@@ -35,7 +35,7 @@ settings:
     #
     rest_port: ${REST_PORT}:4005
     # queue for communication with the collaboration microservice
-    queue: ${COMMUNICATION_QUEUE}:alkemio-collaboration
+    queue: ${COMMUNICATION_QUEUE}:collaboration-document-service
     # MILLISECONDS wait time for a response after a request on the message queue
     queue_response_timeout: ${QUEUE_RESPONSE_TIMEOUT}:5000
     # How many times the requests to retry before failing

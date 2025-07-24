@@ -1,0 +1,308 @@
+import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
+import { ClientProxy, ClientProxyFactory, RmqOptions, Transport } from '@nestjs/microservices';
+import { ConfigService } from '@nestjs/config';
+import { catchError, map, retry, timeInterval, timeout } from 'rxjs/operators';
+import { firstValueFrom, timer } from 'rxjs';
+import { LogContext } from '@common/enums';
+import { ConfigType } from '@src/config';
+import { RetryException, RMQConnectionError, TimeoutException } from './types';
+import { HealthCheckOutputData } from './outputs/health.check.output.data';
+import { IntegrationMessagePattern } from './message.pattern.enum';
+import { IntegrationEventPattern } from './event.pattern.enum';
+import { InfoInputData, WhoInputData } from '@src/services/integration/inputs';
+import { InfoOutputData } from './outputs';
+import { UserInfo } from './user.info';
+
+@Injectable()
+export class IntegrationService implements OnModuleInit, OnModuleDestroy {
+  private client: ClientProxy | undefined;
+  private readonly timeoutMs: number;
+  private readonly retries: number;
+
+  constructor(
+    @Inject(WINSTON_MODULE_NEST_PROVIDER) private logger: WinstonLogger,
+    private readonly configService: ConfigService<ConfigType, true>
+  ) {
+    this.timeoutMs = this.configService.get('settings.application.queue_response_timeout', {
+      infer: true,
+    });
+    this.retries = this.configService.get('settings.application.queue_request_retries', {
+      infer: true,
+    });
+  }
+  public async onModuleInit() {
+    const rabbitMqOptions = this.configService.get('rabbitmq.connection', {
+      infer: true,
+    });
+    const queue = this.configService.get('settings.application.queue', {
+      infer: true,
+    });
+
+    this.client = clientProxyFactory(
+      {
+        ...rabbitMqOptions,
+        queue,
+      },
+      this.logger
+    );
+
+    if (!this.client) {
+      this.logger.error(`${IntegrationService.name} not initialized`);
+      return;
+    }
+
+    try {
+      await this.client.connect();
+      this.logger.verbose?.('Client proxy successfully connected to RabbitMQ');
+    } catch (e) {
+      const error = e as RMQConnectionError | undefined;
+      this.logger.error(error?.err, error?.err.stack);
+    }
+  }
+
+  public onModuleDestroy() {
+    this.client?.close();
+  }
+  /**
+   * Is there a healthy connection to the queue
+   */
+  public async isConnected(): Promise<boolean> {
+    return this.sendWithResponse<HealthCheckOutputData, string>(
+      IntegrationMessagePattern.HEALTH_CHECK,
+      'healthy?',
+      { timeoutMs: 3000 }
+    )
+      .then(resp => resp.healthy)
+      .catch(() => false);
+  }
+
+  public async who(data: WhoInputData) {
+    return this.sendWithResponse<UserInfo, WhoInputData>(IntegrationMessagePattern.WHO, data).catch(
+      () => ({
+        id: 'N/A',
+        email: 'N/A',
+      })
+    );
+  }
+
+  public async info(data: InfoInputData) {
+    return this.sendWithResponse<InfoOutputData, InfoInputData>(
+      IntegrationMessagePattern.INFO,
+      data
+    ).catch(() => {
+      return {
+        read: false,
+        update: false,
+        maxCollaborators: undefined,
+      };
+    });
+  }
+
+  /**
+   * Sends a message to the queue and waits for a response.
+   * Each consumer needs to manually handle failures, returning the proper type.
+   * @param pattern
+   * @param data
+   * @param options
+   */
+  private sendWithResponse = async <TResult, TInput>(
+    pattern: IntegrationMessagePattern,
+    data: TInput,
+    options?: { timeoutMs?: number; retries?: number }
+  ): Promise<TResult | never> => {
+    if (!this.client) {
+      throw new Error('Connection was not established. Send failed.');
+    }
+
+    const timeoutMs = options?.timeoutMs ?? this.timeoutMs;
+    const retries = options?.retries ?? this.retries;
+
+    const result$ = this.client.send<TResult, TInput>(pattern, data).pipe(
+      timeInterval(),
+      timeout({
+        each: timeoutMs,
+        with: () => {
+          throw new TimeoutException(LogContext.INTEGRATION, {
+            timeout: this.timeoutMs,
+            pattern,
+            data,
+          });
+        },
+      }),
+      retry({
+        count: retries,
+        delay: (error, retryCount) => {
+          if (retryCount === this.retries) {
+            throw new RetryException(LogContext.INTEGRATION, {
+              retries: this.retries,
+              data,
+              originalError: error,
+              cause: `Max retries (${this.retries}) reached`,
+            });
+          }
+
+          this.logger.warn?.(
+            `Retrying request to collaboration service [${++retryCount}/${this.retries}]`
+          );
+          // exponential backoff strategy
+          const backoff = Math.pow(2, retryCount) * 10;
+          return timer(backoff);
+        },
+      }),
+      catchError(
+        (
+          error:
+            | RMQConnectionError
+            | TimeoutException
+            | RetryException
+            | Error
+            | Record<string, unknown>
+            | undefined
+            | null
+        ) => {
+          // null or undefined
+          if (error == undefined) {
+            this.logger.error({
+              message: `'${error}' error caught while processing integration request.`,
+              pattern,
+              timeout: timeoutMs,
+            });
+
+            throw new Error(`'${error}' error caught while processing integration request.`);
+          }
+
+          if (error instanceof RetryException) {
+            this.logger.error(
+              {
+                message: `Max retries reached (${this.retries}) while waiting for response`,
+                pattern,
+                timeout: timeoutMs,
+              },
+              error.stack
+            );
+
+            throw new Error('Max retries reached while processing integration request.');
+          }
+
+          if (error instanceof TimeoutException) {
+            this.logger.error(
+              {
+                message: 'Timeout was reached while waiting for response',
+                pattern,
+                timeout: timeoutMs,
+              },
+              error.stack
+            );
+
+            throw new Error('Timeout while processing integration request.');
+          } else if (error instanceof RMQConnectionError) {
+            this.logger.error(
+              {
+                message: `RMQ connection error was received while waiting for response: ${error?.err?.message}`,
+                pattern,
+                timeout: timeoutMs,
+              },
+              error?.err?.stack
+            );
+
+            throw new Error('RMQ connection error while processing integration request.');
+          } else if (error instanceof Error) {
+            this.logger.error(
+              {
+                message: `Error was received while waiting for response: ${error.message}`,
+                pattern,
+                timeout: timeoutMs,
+              },
+              error.stack
+            );
+
+            throw new Error(`${error.name} error while processing integration request.`);
+          } else {
+            this.logger.error({
+              message: `Unknown error was received while waiting for response: ${JSON.stringify(error, null, 2)}`,
+              pattern,
+              timeout: timeoutMs,
+            });
+
+            throw new Error('Unknown error while processing integration request.');
+          }
+        }
+      ),
+      map(x => {
+        this.logger.debug?.({
+          method: `sendWithResponse response took ${x.interval}ms`,
+          pattern,
+          data,
+          value: x.value,
+        });
+        return x.value;
+      })
+    );
+
+    return firstValueFrom(result$);
+  };
+
+  /**
+   * Sends a message to the queue without waiting for a response.
+   * Each consumer needs to manually handle failures, returning the proper type.
+   * @param pattern
+   * @param data
+   */
+  private sendWithoutResponse = <TInput>(
+    pattern: IntegrationEventPattern,
+    data: TInput
+  ): void | never => {
+    if (!this.client) {
+      throw new Error('Connection was not established. Send failed.');
+    }
+
+    this.logger.debug?.({
+      method: 'sendWithoutResponse',
+      pattern,
+      data,
+    });
+
+    this.client.emit<void, TInput>(pattern, data);
+  };
+}
+
+const clientProxyFactory = (
+  config: {
+    user: string;
+    password: string;
+    host: string;
+    port: number;
+    heartbeat: number;
+    queue: string;
+  },
+  logger: WinstonLogger
+): ClientProxy | undefined => {
+  const { host, port, user, password, heartbeat: _heartbeat, queue } = config;
+  const heartbeat = process.env.NODE_ENV === 'production' ? _heartbeat : _heartbeat * 3;
+  logger.verbose?.({ ...config, heartbeat, password: undefined });
+  try {
+    const options: RmqOptions = {
+      transport: Transport.RMQ,
+      options: {
+        urls: [
+          {
+            protocol: 'amqp',
+            hostname: host,
+            username: user,
+            password,
+            port,
+            heartbeat,
+          },
+        ],
+        queue,
+        queueOptions: { durable: true },
+        noAck: true,
+      },
+    };
+    return ClientProxyFactory.create(options);
+  } catch (err) {
+    logger.error(`Could not create client proxy: ${err}`);
+    return undefined;
+  }
+};
