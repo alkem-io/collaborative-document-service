@@ -1,4 +1,3 @@
-import { Doc as YjsDoc } from 'yjs';
 import { BaseInputData } from './base.input.data';
 
 /**
@@ -7,12 +6,12 @@ import { BaseInputData } from './base.input.data';
 export class SaveInputData extends BaseInputData {
   /**
    * Creates a new ContentModifiedInputData instance.
-   * @param {string} whiteboardId - The ID of the whiteboard which is going to be saved.
-   * @param {YjsDoc} content - The content of the whiteboard. Must be a valid Excalidraw whiteboard content
+   * @param {string} documentId - The ID of the document which is going to be saved.
+   * @param {string} content - The content of the document.
    */
   constructor(
-    public whiteboardId: string,
-    public content: YjsDoc
+    public documentId: string,
+    public content: string
   ) {
     super('save-input');
   }

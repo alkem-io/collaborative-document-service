@@ -1,20 +1,26 @@
 import { Doc as YjsDoc } from 'yjs';
-import { Inject, Injectable, LoggerService } from '@nestjs/common';
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import { Injectable } from '@nestjs/common';
 import { NotProvidedException } from '@common/exceptions';
 import { LogContext } from '@common/enums';
-import { UserInfo } from '../integration/user.info';
+import { UserInfo } from '../integration/types';
 import { FetchInputData, SaveInputData, WhoInputData } from '../integration/inputs';
 import { isFetchErrorData } from '../integration/outputs';
-import { IntegrationService } from '../integration/integration.service';
+import { IntegrationService } from '../integration';
+import { FetchException } from '@src/services/util/fetch.exception';
+
+import { Editor } from '@tiptap/core';
+import Collaboration from '@tiptap/extension-collaboration';
 
 @Injectable()
 export class UtilService {
-  constructor(
-    @Inject(WINSTON_MODULE_NEST_PROVIDER) private logger: LoggerService,
-    private readonly integrationService: IntegrationService
-  ) {}
+  constructor(private readonly integrationService: IntegrationService) {}
 
+  /**
+   * Fetches user information based on the provided cookie or authorization header.
+   * If both are provided, authorization header takes precedence.
+   * @throws NotProvidedException if neither is provided.
+   * @param opts
+   */
   public async getUserInfo(opts: {
     cookie?: string;
     authorization?: string;
@@ -35,26 +41,48 @@ export class UtilService {
     );
   }
 
-  public save(roomId: string, document: YjsDoc) {
-    return this.integrationService.save(new SaveInputData(roomId, document));
+  public save(documentId: string, document: YjsDoc) {
+    const markdown = yjsDocToMarkdown(document);
+    return this.integrationService.save(new SaveInputData(documentId, markdown));
   }
 
   /**
-   * Fetches the content of the whiteboard from DB or if not found returns an initial empty content.
-   * @param roomId Whiteboard ID
+   * Fetches the content of the Y.doc from DB
+   * @param documentId Document ID
+   * @throws FetchException if the fetch fails
    */
-  public async fetchContentFromDbOrEmpty(roomId: string): Promise<ExcalidrawContent> {
-    const { data } = await this.integrationService.fetch(new FetchInputData(roomId));
+  public async fetchMemo(documentId: string): Promise<YjsDoc> {
+    const { data } = await this.integrationService.fetch(new FetchInputData(documentId));
 
     if (isFetchErrorData(data)) {
-      return excalidrawInitContent;
+      throw new FetchException('Failed to fetch memo', LogContext.UTIL, {
+        originalError: data.error,
+        code: data.code,
+      });
     }
 
-    try {
-      return JSON.parse(data.content);
-    } catch (e: any) {
-      this.logger.error(e, e?.stack);
-      return excalidrawInitContent;
-    }
+    return markdownToYjsDoc(data.content);
   }
 }
+
+const markdownToYjsDoc = (markdown: string): YjsDoc => {
+  const doc = new YjsDoc();
+  const yText = doc.getText('default');
+  yText.insert(0, markdown);
+  return doc;
+};
+
+const yjsDocToMarkdown = (doc: YjsDoc): string => {
+  const editor = new Editor({
+    extensions: [
+      Collaboration.configure({
+        document: doc,
+        field: 'default',
+      }),
+    ],
+    editable: false,
+  });
+
+  // The editor's getText() returns the Markdown string
+  return editor.getText();
+};

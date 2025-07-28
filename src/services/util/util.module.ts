@@ -1,12 +1,10 @@
 import { Module } from '@nestjs/common';
-import { WhiteboardIntegrationModule } from '../whiteboard-integration/whiteboard.integration.module';
-import { ElasticsearchClientProvider } from '../../elasticsearch-client';
-import { ElasticsearchModule } from '../elasticsearch/elasticsearch.module';
+import { IntegrationModule } from '@src/services/integration';
 import { UtilService } from './util.service';
 
 @Module({
-  imports: [WhiteboardIntegrationModule, ElasticsearchModule],
-  providers: [UtilService, ElasticsearchClientProvider],
+  imports: [IntegrationModule],
+  providers: [UtilService],
   exports: [UtilService],
 })
 export class UtilModule {}

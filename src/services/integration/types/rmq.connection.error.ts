@@ -1,9 +1,9 @@
 export class RMQConnectionError {
-  err: {
+  err!: {
     stack: string;
     message: string;
   };
-  url: {
+  url!: {
     protocol: string;
     hostname: string;
     username: string;

@@ -1,23 +1,41 @@
 import { Extension, onAuthenticatePayload, onConnectPayload } from '@hocuspocus/server';
 import { FactoryProvider } from '@nestjs/common';
+import { LogContext } from '@common/enums';
+import { UtilService } from '@src/services/util';
+import { AUTHENTICATION_EXTENSION } from './authentication.extension.token';
+import { AuthenticationException } from './authentication.exception';
+import { AbstractAuthentication } from './abstract.authentication';
 
 const AuthenticationFactory: FactoryProvider<Extension> = {
-  provide: '',
-  inject: [],
-  useFactory: () => {
-    return new (class Authentication implements Extension {
+  provide: AUTHENTICATION_EXTENSION,
+  inject: [UtilService],
+  useFactory: (utilService: UtilService) => {
+    return new (class Authentication extends AbstractAuthentication {
       /**
        * Called once, when a client is connecting.
        * This is the first method called by the server.
        * Whatever you return will be part of the context field on each hooks
        * @param data
        */
-      onConnect(data: onConnectPayload): Promise<any> {
-        // check cookies, authorization header
-        data.connectionConfig.readOnly = false;
-        data.connectionConfig.isAuthenticated = true;
+      async onConnect(data: onConnectPayload): Promise<any> {
+        data.connectionConfig.readOnly = true; // not yet determined
 
-        return Promise.resolve({ mydata: Math.random() });
+        const { cookie, authorization } = data.requestHeaders;
+
+        try {
+          const userInfo = await utilService.getUserInfo({ cookie, authorization });
+          data.connectionConfig.isAuthenticated = true;
+          // attach to the context field
+          return userInfo;
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (e) {
+          data.connectionConfig.isAuthenticated = false;
+          // do not throw an error for now - wait for onAuthenticate
+        }
+
+        // todo: authorize the document access here
+
+        return Promise.resolve();
       }
 
       /**
@@ -29,13 +47,25 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
         if (data.connectionConfig.isAuthenticated) {
           return Promise.resolve();
         }
+        // treat the token as a bearer token
+        const { token } = data;
+        const authorization = `Bearer ${token}`;
         // check token only
-        data.connectionConfig.readOnly = false;
-        data.connectionConfig.isAuthenticated = false;
+        try {
+          const userInfo = utilService.getUserInfo({ authorization });
+          data.connectionConfig.isAuthenticated = true;
+          // attach to the context field
+          return userInfo;
+        } catch (e) {
+          data.connectionConfig.isAuthenticated = false;
+          throw new AuthenticationException(
+            'Authentication failed. Please provide a valid token.',
+            LogContext.AUTHENTICATION,
+            { originalException: e }
+          );
+        }
 
-        console.error('authentication FORBIDDEN');
-
-        return Promise.reject();
+        // todo: authorize the document access here
       }
     })();
   },

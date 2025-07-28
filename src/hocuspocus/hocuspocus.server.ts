@@ -1,20 +1,22 @@
-import { Injectable, Inject, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
 import { Server } from '@hocuspocus/server';
-import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
 import { ConfigService } from '@nestjs/config';
 import { ConfigType } from '../config';
+import { AUTHENTICATION_EXTENSION } from '@src/hocuspocus/extensions/authentication';
+import { AbstractAuthentication } from '@src/hocuspocus/extensions/authentication';
+import { AbstractStorage, STORAGE_EXTENSION } from '@src/hocuspocus/extensions/storage';
 
 @Injectable()
 export class HocuspocusServer implements OnModuleInit, OnModuleDestroy {
   private readonly hocuspocusServer: Server;
 
   constructor(
-    @Inject(WINSTON_MODULE_NEST_PROVIDER)
-    private readonly logger: WinstonLogger,
-    private readonly config: ConfigService<ConfigType, true>
+    private readonly config: ConfigService<ConfigType, true>,
+    @Inject(AUTHENTICATION_EXTENSION) Authentication: AbstractAuthentication,
+    @Inject(STORAGE_EXTENSION) Storage: AbstractStorage
   ) {
     this.hocuspocusServer = new Server({
-      extensions: [],
+      extensions: [Authentication, Storage],
     });
   }
   async onModuleInit() {

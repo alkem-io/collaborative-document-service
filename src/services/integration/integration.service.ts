@@ -6,10 +6,15 @@ import { catchError, map, retry, timeInterval, timeout } from 'rxjs/operators';
 import { firstValueFrom, timer } from 'rxjs';
 import { LogContext } from '@common/enums';
 import { ConfigType } from '@src/config';
-import { RetryException, RMQConnectionError, TimeoutException } from './types';
-import { HealthCheckOutputData } from './outputs/health.check.output.data';
-import { IntegrationMessagePattern } from './message.pattern.enum';
-import { IntegrationEventPattern } from './event.pattern.enum';
+import {
+  IntegrationEventPattern,
+  IntegrationMessagePattern,
+  RetryException,
+  RMQConnectionError,
+  TimeoutException,
+  UserInfo,
+} from './types';
+import { HealthCheckOutputData } from './outputs';
 import {
   FetchInputData,
   InfoInputData,
@@ -24,7 +29,6 @@ import {
   SaveErrorData,
   SaveOutputData,
 } from './outputs';
-import { UserInfo } from './user.info';
 
 @Injectable()
 export class IntegrationService implements OnModuleInit, OnModuleDestroy {

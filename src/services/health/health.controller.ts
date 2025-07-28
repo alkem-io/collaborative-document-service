@@ -1,11 +1,9 @@
 import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common';
-import { WhiteboardIntegrationService } from '../whiteboard-integration/whiteboard.integration.service';
+import { IntegrationService } from '@src/services/integration';
 
 @Controller('/health')
 export class HealthController {
-  constructor(
-    private readonly integrationService: WhiteboardIntegrationService,
-  ) {}
+  constructor(private readonly integrationService: IntegrationService) {}
   @Get('/')
   public async healthCheck(): Promise<string> {
     if (!(await this.integrationService.isConnected())) {

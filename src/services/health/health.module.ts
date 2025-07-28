@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
+import { IntegrationService } from '@src/services/integration';
 import { HealthController } from './health.controller';
-import { WhiteboardIntegrationModule } from '../whiteboard-integration/whiteboard.integration.module';
 
 @Module({
-  imports: [WhiteboardIntegrationModule],
+  imports: [IntegrationService],
   controllers: [HealthController],
 })
 export class HealthModule {}
