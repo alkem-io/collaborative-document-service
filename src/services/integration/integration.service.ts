@@ -10,8 +10,20 @@ import { RetryException, RMQConnectionError, TimeoutException } from './types';
 import { HealthCheckOutputData } from './outputs/health.check.output.data';
 import { IntegrationMessagePattern } from './message.pattern.enum';
 import { IntegrationEventPattern } from './event.pattern.enum';
-import { InfoInputData, WhoInputData } from '@src/services/integration/inputs';
-import { InfoOutputData } from './outputs';
+import {
+  FetchInputData,
+  InfoInputData,
+  SaveInputData,
+  WhoInputData,
+} from '@src/services/integration/inputs';
+import {
+  FetchErrorCodes,
+  FetchErrorData,
+  FetchOutputData,
+  InfoOutputData,
+  SaveErrorData,
+  SaveOutputData,
+} from './outputs';
 import { UserInfo } from './user.info';
 
 @Injectable()
@@ -78,25 +90,38 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
   }
 
   public async who(data: WhoInputData) {
-    return this.sendWithResponse<UserInfo, WhoInputData>(IntegrationMessagePattern.WHO, data).catch(
-      () => ({
-        id: 'N/A',
-        email: 'N/A',
-      })
-    );
+    return this.sendWithResponse<UserInfo, WhoInputData>(IntegrationMessagePattern.WHO, data);
   }
 
   public async info(data: InfoInputData) {
     return this.sendWithResponse<InfoOutputData, InfoInputData>(
       IntegrationMessagePattern.INFO,
       data
-    ).catch(() => {
-      return {
-        read: false,
-        update: false,
-        maxCollaborators: undefined,
-      };
-    });
+    );
+  }
+
+  public async save(data: SaveInputData) {
+    try {
+      return await this.sendWithResponse<SaveOutputData, SaveInputData>(
+        IntegrationMessagePattern.SAVE,
+        data
+      );
+    } catch (e: any) {
+      return new SaveOutputData(new SaveErrorData(e?.message ?? JSON.stringify(e)));
+    }
+  }
+
+  public async fetch(data: FetchInputData) {
+    try {
+      return await this.sendWithResponse<FetchOutputData, FetchInputData>(
+        IntegrationMessagePattern.FETCH,
+        data
+      );
+    } catch (e: any) {
+      return new FetchOutputData(
+        new FetchErrorData(e?.message ?? JSON.stringify(e), FetchErrorCodes.INTERNAL_ERROR)
+      );
+    }
   }
 
   /**
@@ -105,6 +130,8 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
    * @param pattern
    * @param data
    * @param options
+   * @throws Error if the connection is not established, or if the request times out or exceeds the maximum number of retries.
+   * @returns Promise with the response data of type TResult.
    */
   private sendWithResponse = async <TResult, TInput>(
     pattern: IntegrationMessagePattern,

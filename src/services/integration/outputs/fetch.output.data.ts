@@ -1,5 +1,10 @@
 import { BaseOutputData } from './base.output.data';
 
+export enum FetchErrorCodes {
+  NOT_FOUND = 'not_found',
+  INTERNAL_ERROR = 'internal_error',
+}
+
 export class FetchOutputData extends BaseOutputData {
   constructor(public data: FetchContentData | FetchErrorData) {
     super('fetch-output');
@@ -11,7 +16,10 @@ export class FetchContentData {
 }
 
 export class FetchErrorData {
-  constructor(public error: string) {}
+  constructor(
+    public error: string,
+    public code: FetchErrorCodes
+  ) {}
 }
 
 export const isFetchErrorData = (
