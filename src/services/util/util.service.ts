@@ -67,8 +67,8 @@ export class UtilService {
 
 const markdownToYjsDoc = (markdown: string): YjsDoc => {
   const doc = new YjsDoc();
-  const yText = doc.getText('default');
-  yText.insert(0, markdown);
+  // const yText = doc.getText('default');
+  // yText.insert(0, markdown);
   return doc;
 };
 

@@ -4,4 +4,5 @@ export enum LogContext {
   AUTHENTICATION = 'authentication',
   HEALTH = 'health',
   AUTH = 'auth',
+  FILTERS = 'filters',
 }

@@ -1,8 +1,11 @@
+import { Doc } from 'yjs';
 import { Extension, onLoadDocumentPayload, onStoreDocumentPayload } from '@hocuspocus/server';
 import { FactoryProvider } from '@nestjs/common';
 import { UtilService } from '@src/services/util';
 import { STORAGE_EXTENSION } from './storage.extension.token';
 import { AbstractStorage } from './abstract.storage';
+
+const inMemoryStorage = new Map<string, Doc>();
 
 const StorageFactory: FactoryProvider<Extension> = {
   provide: STORAGE_EXTENSION,
@@ -14,8 +17,9 @@ const StorageFactory: FactoryProvider<Extension> = {
        * Called after onAuthenticate
        * @param data
        */
-      onLoadDocument({ documentName: documentId }: onLoadDocumentPayload): Promise<any> {
-        return utilService.fetchMemo(documentId);
+      onLoadDocument({ documentName: documentId }: onLoadDocumentPayload): Promise<Doc> {
+        return Promise.resolve(inMemoryStorage.get(documentId) ?? new Doc());
+        // return utilService.fetchMemo(documentId);
       }
       /**
        * The onStoreDocument hooks are called after the document has been changed (after the onChange hook)
@@ -25,7 +29,9 @@ const StorageFactory: FactoryProvider<Extension> = {
         documentName: documentId,
         document,
       }: onStoreDocumentPayload): Promise<any> {
-        return utilService.save(documentId, document);
+        inMemoryStorage.set(documentId, document);
+        return Promise.resolve();
+        // return utilService.save(documentId, document);
       }
     })();
   },
