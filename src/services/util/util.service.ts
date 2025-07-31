@@ -1,19 +1,23 @@
 import { Doc as YjsDoc } from 'yjs';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { NotProvidedException } from '@common/exceptions';
 import { LogContext } from '@common/enums';
 import { UserInfo } from '../integration/types';
-import { FetchInputData, SaveInputData, WhoInputData } from '../integration/inputs';
-import { isFetchErrorData } from '../integration/outputs';
+import { FetchInputData, InfoInputData, SaveInputData, WhoInputData } from '../integration/inputs';
+import { InfoOutputData, isFetchErrorData } from '../integration/outputs';
 import { IntegrationService } from '../integration';
 import { FetchException } from '@src/services/util/fetch.exception';
 
 import { Editor } from '@tiptap/core';
 import Collaboration from '@tiptap/extension-collaboration';
+import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
 
 @Injectable()
 export class UtilService {
-  constructor(private readonly integrationService: IntegrationService) {}
+  constructor(
+    @Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: WinstonLogger,
+    private readonly integrationService: IntegrationService
+  ) {}
 
   /**
    * Fetches user information based on the provided cookie or authorization header.
@@ -21,10 +25,7 @@ export class UtilService {
    * @throws NotProvidedException if neither is provided.
    * @param opts
    */
-  public async getUserInfo(opts: {
-    cookie?: string;
-    authorization?: string;
-  }): Promise<UserInfo | never> {
+  public getUserInfo(opts: { cookie?: string; authorization?: string }): Promise<UserInfo | never> {
     const { cookie, authorization } = opts;
     // we want to choose the authorization with priority
     if (authorization) {
@@ -39,6 +40,27 @@ export class UtilService {
       'Not able to get user info. At least one of: Cookie and Authorization headers need not be provided',
       LogContext.INTEGRATION
     );
+  }
+
+  public async getUserAccessToMemo(userId: string, memoId: string): Promise<InfoOutputData> {
+    try {
+      return this.integrationService.info(new InfoInputData(userId, memoId));
+    } catch (error: any) {
+      this.logger.error(
+        {
+          message: 'Received error while getting user access to Memo',
+          userId,
+          memoId,
+          error,
+        },
+        error?.stack,
+        LogContext.UTIL
+      );
+      return {
+        read: false,
+        update: false,
+      };
+    }
   }
 
   public save(documentId: string, document: YjsDoc) {
