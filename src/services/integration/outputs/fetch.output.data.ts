@@ -12,7 +12,7 @@ export class FetchOutputData extends BaseOutputData {
 }
 
 export class FetchContentData {
-  constructor(public content: string) {}
+  constructor(public contentBase64: string | undefined) {}
 }
 
 export class FetchErrorData {

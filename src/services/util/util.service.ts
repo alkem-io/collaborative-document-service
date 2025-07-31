@@ -1,4 +1,4 @@
-import { Doc as YjsDoc } from 'yjs';
+import * as Y from 'yjs';
 import { Inject, Injectable } from '@nestjs/common';
 import { NotProvidedException } from '@common/exceptions';
 import { LogContext } from '@common/enums';
@@ -63,9 +63,13 @@ export class UtilService {
     }
   }
 
-  public save(documentId: string, document: YjsDoc) {
-    const markdown = yjsDocToMarkdown(document);
-    return this.integrationService.save(new SaveInputData(documentId, markdown));
+  public save(documentId: string, document: Y.Doc) {
+    const binaryStateV2 = yjsDocToBinaryStateV2(document);
+    const binaryStateInBase64 = Buffer.from(binaryStateV2).toString('base64');
+    console.log('outgoing binaryStateV2 length', binaryStateV2.length, binaryStateV2.byteLength);
+    console.log('outgoing binaryStateV2 in base64 length', binaryStateInBase64.length);
+
+    return this.integrationService.save(new SaveInputData(documentId, binaryStateInBase64));
   }
 
   /**
@@ -73,7 +77,7 @@ export class UtilService {
    * @param documentId Document ID
    * @throws FetchException if the fetch fails
    */
-  public async fetchMemo(documentId: string): Promise<YjsDoc> {
+  public async fetchMemo(documentId: string): Promise<Y.Doc> {
     const { data } = await this.integrationService.fetch(new FetchInputData(documentId));
 
     if (isFetchErrorData(data)) {
@@ -82,19 +86,34 @@ export class UtilService {
         code: data.code,
       });
     }
+    const binaryStateV2 = data.contentBase64
+      ? Buffer.from(data.contentBase64, 'base64')
+      : undefined;
 
-    return markdownToYjsDoc(data.content);
+    return binaryStateV2ToYjsDoc(binaryStateV2);
   }
 }
+/**
+ * Returns the v2 binary state of the Y.Doc. V2 update format provides much better compression.
+ *
+ * <b>To not be confused with the v1 binary state, which is not compatible with the v2.</b>
+ * @param doc
+ */
+const yjsDocToBinaryStateV2 = (doc: Y.Doc): Uint8Array => {
+  return Y.encodeStateAsUpdateV2(doc);
+};
 
-const markdownToYjsDoc = (markdown: string): YjsDoc => {
-  const doc = new YjsDoc();
-  // const yText = doc.getText('default');
-  // yText.insert(0, markdown);
+const binaryStateV2ToYjsDoc = (binaryV2State: Buffer | undefined): Y.Doc => {
+  const doc = new Y.Doc();
+
+  if (binaryV2State) {
+    Y.applyUpdateV2(doc, new Uint8Array(binaryV2State));
+  }
+
   return doc;
 };
 
-const yjsDocToMarkdown = (doc: YjsDoc): string => {
+const yjsDocToMarkdown = (doc: Y.Doc): string => {
   const editor = new Editor({
     extensions: [
       Collaboration.configure({
@@ -107,4 +126,11 @@ const yjsDocToMarkdown = (doc: YjsDoc): string => {
 
   // The editor's getText() returns the Markdown string
   return editor.getText();
+};
+
+const markdownToYjsDoc = (markdown: string): Y.Doc => {
+  const doc = new Y.Doc();
+  // const yText = doc.getText('default');
+  // yText.insert(0, markdown);
+  return doc;
 };

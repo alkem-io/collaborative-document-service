@@ -18,8 +18,8 @@ const StorageFactory: FactoryProvider<Extension> = {
        * @param data
        */
       onLoadDocument({ documentName: documentId }: onLoadDocumentPayload): Promise<Doc> {
-        return Promise.resolve(inMemoryStorage.get(documentId) ?? new Doc());
-        // return utilService.fetchMemo(documentId);
+        // Promise.resolve(inMemoryStorage.get(documentId) ?? new Doc());
+        return utilService.fetchMemo(documentId);
       }
       /**
        * The onStoreDocument hooks are called after the document has been changed (after the onChange hook)
@@ -30,8 +30,8 @@ const StorageFactory: FactoryProvider<Extension> = {
         document,
       }: onStoreDocumentPayload): Promise<any> {
         inMemoryStorage.set(documentId, document);
-        return Promise.resolve();
-        // return utilService.save(documentId, document);
+        // return Promise.resolve();
+        return utilService.save(documentId, document);
       }
     })();
   },
