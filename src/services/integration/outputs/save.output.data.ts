@@ -14,8 +14,6 @@ export class SaveErrorData {
   constructor(public error: string) {}
 }
 
-export const isSaveErrorData = (
-  data: SaveContentData | SaveErrorData,
-): data is SaveErrorData => {
+export const isSaveErrorData = (data: SaveContentData | SaveErrorData): data is SaveErrorData => {
   return (data as SaveErrorData).error !== undefined;
 };
