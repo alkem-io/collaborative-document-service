@@ -1,3 +1,1 @@
-export enum IntegrationEventPattern {
-  SAVE = 'save',
-}
+export enum IntegrationEventPattern {}
