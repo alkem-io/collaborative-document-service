@@ -1,0 +1,47 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  namespace: default
+  name: collaborative-document-service-deployment
+  labels:
+    app: collaborative-document-service
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collaborative-document-service
+  template:
+    metadata:
+      labels:
+        app: collaborative-document-service
+    spec:
+      containers:
+        - name: collaborative-document-service
+          image: alkemio.azurecr.io/collaborative-document-service:latest
+          env:
+            - name: RABBITMQ_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: alkemio-rabbitmq-cluster-default-user
+                  key: host
+            - name: RABBITMQ_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: alkemio-rabbitmq-cluster-default-user
+                  key: port
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: alkemio-rabbitmq-cluster-default-user
+                  key: username
+            - name: RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: alkemio-rabbitmq-cluster-default-user
+                  key: password
+          envFrom:
+            - secretRef:
+                name: alkemio-secrets
+            - configMapRef:
+                name: alkemio-config
