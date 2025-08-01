@@ -1,22 +1,24 @@
 import { Extension, onAuthenticatePayload, onConnectPayload } from '@hocuspocus/server';
+import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
 import { FactoryProvider } from '@nestjs/common';
 import { LogContext } from '@common/enums';
 import { UtilService } from '@src/services/util';
 import { AUTHENTICATION_EXTENSION } from './authentication.extension.token';
-import { AuthenticationException } from './authentication.exception';
 import { AbstractAuthentication } from './abstract.authentication';
-import { WinstonLogger } from 'nest-winston';
+import { ForbiddenException } from './forbidden.exception';
 import { UserInfo } from '@src/services/integration/types';
+import { AuthenticationException } from './authentication.exception';
 
 const AuthenticationFactory: FactoryProvider<Extension> = {
   provide: AUTHENTICATION_EXTENSION,
-  inject: [UtilService],
+  inject: [UtilService, WINSTON_MODULE_NEST_PROVIDER],
   useFactory: (utilService: UtilService, logger: WinstonLogger) => {
     /**
      *
      * @param handleName
      * @param documentId
      * @param auth
+     * @throws ForbiddenException If the user is authenticated but does not have read access to the document.
      */
     const authenticateAndAuthorize = async (
       handleName: string,
@@ -38,7 +40,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
       } catch (error: any) {
         logger.error(
           {
-            message: `[${handleName}] Getting the user info failed. Defaulting to readOnly=true, isAuthenticated=false.`,
+            message: `[${handleName}] Getting the client info failed. Defaulting to readOnly=true, isAuthenticated=false.`,
             error,
           },
           error?.stack,
@@ -46,11 +48,20 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
         );
         return { isAuthenticated: false, readOnly: false, read: false };
       }
+
       // user is authenticated, now check the access to the document
       const { read, update } = await utilService.getUserAccessToMemo(userInfo.id, documentId);
       // user is authenticated, but does not have read access to the document - disconnect
       if (!read) {
-        throw new AuthenticationException(
+        logger.verbose?.(
+          {
+            message: `[${handleName}] Client is authenticated but does not have READ access to the document.`,
+            userId: userInfo?.email,
+            documentId,
+          },
+          LogContext.AUTHENTICATION
+        );
+        throw new ForbiddenException(
           'User does not have read access to this document.',
           LogContext.AUTHENTICATION,
           {
@@ -88,19 +99,15 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
         if (!isAuthenticated) {
           return Promise.resolve();
         }
-        // user is authenticated, but does not have read access to the document - disconnect
-        if (!read) {
-          throw new AuthenticationException(
-            'User does not have read access to this document.',
-            LogContext.AUTHENTICATION,
-            {
-              userId: userInfo?.id,
-              documentId: data.documentName,
-            }
-          );
-        }
-        // user is authenticated, and has read access to the document
-        // push the user info to the context
+
+        logger.verbose?.(
+          {
+            message: `[onConnect] User authenticated with flags read=${read},readOnly=${readOnly}`,
+            userId: userInfo?.email,
+            documentId: data.documentName,
+          },
+          LogContext.AUTHENTICATION
+        );
         return { userInfo };
       }
 
@@ -128,7 +135,14 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
         data.connectionConfig.readOnly = readOnly;
         // user is NOT authenticated - disconnect
         if (!isAuthenticated) {
-          // user is not authenticated, disconnect
+          logger.verbose?.(
+            {
+              message: '[onAuthenticate] Client failed to authenticate.',
+              userId: userInfo?.email,
+              documentId: data.documentName,
+            },
+            LogContext.AUTHENTICATION
+          ); // user is not authenticated, disconnect
           throw new AuthenticationException(
             'User is not authenticated.',
             LogContext.AUTHENTICATION,
@@ -138,17 +152,15 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
             }
           );
         }
-        // user is authenticated, but does not have read access to the document - disconnect
-        if (!read) {
-          throw new AuthenticationException(
-            'User does not have read access to this document.',
-            LogContext.AUTHENTICATION,
-            {
-              userId: userInfo?.id,
-              documentId: data.documentName,
-            }
-          );
-        }
+        logger.verbose?.(
+          {
+            message: `[onAuthenticate] Client authenticated with flags read=${read},readOnly=${readOnly}`,
+            userId: userInfo?.email,
+            documentId: data.documentName,
+          },
+          LogContext.AUTHENTICATION
+        );
+
         // user is authenticated, and has read access to the document
         return { userInfo };
       }
