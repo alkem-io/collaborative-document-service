@@ -66,8 +66,6 @@ export class UtilService {
   public save(documentId: string, document: Y.Doc) {
     const binaryStateV2 = yjsDocToBinaryStateV2(document);
     const binaryStateInBase64 = Buffer.from(binaryStateV2).toString('base64');
-    console.log('outgoing binaryStateV2 length', binaryStateV2.length, binaryStateV2.byteLength);
-    console.log('outgoing binaryStateV2 in base64 length', binaryStateInBase64.length);
 
     return this.integrationService.save(new SaveInputData(documentId, binaryStateInBase64));
   }

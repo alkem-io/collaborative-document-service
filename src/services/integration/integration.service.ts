@@ -64,16 +64,23 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
     );
 
     if (!this.client) {
-      this.logger.error(`${IntegrationService.name} not initialized`);
+      this.logger.error(
+        `${IntegrationService.name} not initialized`,
+        undefined,
+        LogContext.INTEGRATION
+      );
       return;
     }
 
     try {
       await this.client.connect();
-      this.logger.verbose?.('Client proxy successfully connected to RabbitMQ');
+      this.logger.verbose?.(
+        'Client proxy successfully connected to RabbitMQ',
+        LogContext.INTEGRATION
+      );
     } catch (e) {
       const error = e as RMQConnectionError | undefined;
-      this.logger.error(error?.err, error?.err.stack);
+      this.logger.error(error?.err, error?.err.stack, LogContext.INTEGRATION);
     }
   }
 
@@ -174,7 +181,8 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
           }
 
           this.logger.warn?.(
-            `Retrying request to collaboration service [${++retryCount}/${this.retries}]`
+            `Retrying request to collaboration service [${++retryCount}/${this.retries}]`,
+            LogContext.INTEGRATION
           );
           // exponential backoff strategy
           const backoff = Math.pow(2, retryCount) * 10;
@@ -194,11 +202,14 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
         ) => {
           // null or undefined
           if (error == undefined) {
-            this.logger.error({
-              message: `'${error}' error caught while processing integration request.`,
-              pattern,
-              timeout: timeoutMs,
-            });
+            this.logger.error(
+              {
+                message: `'${error}' error caught while processing integration request.`,
+                pattern,
+                timeout: timeoutMs,
+              },
+              LogContext.INTEGRATION
+            );
 
             throw new Error(`'${error}' error caught while processing integration request.`);
           }
@@ -210,7 +221,8 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
                 pattern,
                 timeout: timeoutMs,
               },
-              error.stack
+              error.stack,
+              LogContext.INTEGRATION
             );
 
             throw new Error('Max retries reached while processing integration request.');
@@ -223,7 +235,8 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
                 pattern,
                 timeout: timeoutMs,
               },
-              error.stack
+              error.stack,
+              LogContext.INTEGRATION
             );
 
             throw new Error('Timeout while processing integration request.');
@@ -234,7 +247,8 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
                 pattern,
                 timeout: timeoutMs,
               },
-              error?.err?.stack
+              error?.err?.stack,
+              LogContext.INTEGRATION
             );
 
             throw new Error('RMQ connection error while processing integration request.');
@@ -245,28 +259,36 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
                 pattern,
                 timeout: timeoutMs,
               },
-              error.stack
+              error.stack,
+              LogContext.INTEGRATION
             );
 
             throw new Error(`${error.name} error while processing integration request.`);
           } else {
-            this.logger.error({
-              message: `Unknown error was received while waiting for response: ${JSON.stringify(error, null, 2)}`,
-              pattern,
-              timeout: timeoutMs,
-            });
+            this.logger.error(
+              {
+                message: `Unknown error was received while waiting for response: ${JSON.stringify(error, null, 2)}`,
+                pattern,
+                timeout: timeoutMs,
+              },
+              undefined,
+              LogContext.INTEGRATION
+            );
 
             throw new Error('Unknown error while processing integration request.');
           }
         }
       ),
       map(x => {
-        this.logger.debug?.({
-          method: `sendWithResponse response took ${x.interval}ms`,
-          pattern,
-          data,
-          value: x.value,
-        });
+        this.logger.debug?.(
+          {
+            method: `sendWithResponse response took ${x.interval}ms`,
+            pattern,
+            data,
+            value: x.value,
+          },
+          LogContext.INTEGRATION
+        );
         return x.value;
       })
     );
@@ -288,11 +310,14 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
       throw new Error('Connection was not established. Send failed.');
     }
 
-    this.logger.debug?.({
-      method: 'sendWithoutResponse',
-      pattern,
-      data,
-    });
+    this.logger.debug?.(
+      {
+        method: 'sendWithoutResponse',
+        pattern,
+        data,
+      },
+      LogContext.INTEGRATION
+    );
 
     this.client.emit<void, TInput>(pattern, data);
   };
@@ -311,7 +336,7 @@ const clientProxyFactory = (
 ): ClientProxy | undefined => {
   const { host, port, user, password, heartbeat: _heartbeat, queue } = config;
   const heartbeat = process.env.NODE_ENV === 'production' ? _heartbeat : _heartbeat * 3;
-  logger.verbose?.({ ...config, heartbeat, password: undefined });
+  logger.verbose?.({ ...config, heartbeat, password: undefined }, LogContext.INTEGRATION);
   try {
     const options: RmqOptions = {
       transport: Transport.RMQ,
@@ -332,8 +357,8 @@ const clientProxyFactory = (
       },
     };
     return ClientProxyFactory.create(options);
-  } catch (err) {
-    logger.error(`Could not create client proxy: ${err}`);
+  } catch (err: any) {
+    logger.error(`Could not create client proxy: ${err}`, err?.stack, LogContext.INTEGRATION);
     return undefined;
   }
 };

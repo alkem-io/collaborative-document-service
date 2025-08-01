@@ -4,8 +4,7 @@ import { FactoryProvider } from '@nestjs/common';
 import { UtilService } from '@src/services/util';
 import { STORAGE_EXTENSION } from './storage.extension.token';
 import { AbstractStorage } from './abstract.storage';
-
-const inMemoryStorage = new Map<string, Doc>();
+import { isSaveErrorData } from '@src/services/integration/outputs';
 
 const StorageFactory: FactoryProvider<Extension> = {
   provide: STORAGE_EXTENSION,
@@ -18,20 +17,23 @@ const StorageFactory: FactoryProvider<Extension> = {
        * @param data
        */
       onLoadDocument({ documentName: documentId }: onLoadDocumentPayload): Promise<Doc> {
-        // Promise.resolve(inMemoryStorage.get(documentId) ?? new Doc());
         return utilService.fetchMemo(documentId);
       }
       /**
        * The onStoreDocument hooks are called after the document has been changed (after the onChange hook)
        * Calls to onStoreDocument are debounced by default (see debounce and maxDebounce configuration options).
        */
-      onStoreDocument({
-        documentName: documentId,
-        document,
-      }: onStoreDocumentPayload): Promise<any> {
-        inMemoryStorage.set(documentId, document);
-        // return Promise.resolve();
-        return utilService.save(documentId, document);
+      async onStoreDocument(a: onStoreDocumentPayload): Promise<any> {
+        const { documentName: documentId, document } = a;
+        const result = await utilService.save(documentId, document);
+
+        if (isSaveErrorData(result.data)) {
+          document.broadcastStateless('save-error');
+        } else {
+          document.broadcastStateless('saved');
+        }
+
+        return Promise.resolve();
       }
     })();
   },
