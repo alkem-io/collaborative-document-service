@@ -99,7 +99,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
         );
 
         data.connectionConfig.isAuthenticated = isAuthenticated;
-        data.connectionConfig.readOnly = true;
+        data.connectionConfig.readOnly = readOnly;
         // user is not authenticated, wait for onAuthenticate
         if (!isAuthenticated) {
           return Promise.resolve();
