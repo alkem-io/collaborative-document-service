@@ -1,4 +1,9 @@
-import { Extension, onAuthenticatePayload, onConnectPayload } from '@hocuspocus/server';
+import {
+  connectedPayload,
+  Extension,
+  onAuthenticatePayload,
+  onConnectPayload,
+} from '@hocuspocus/server';
 import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
 import { FactoryProvider } from '@nestjs/common';
 import { LogContext } from '@common/enums';
@@ -94,7 +99,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
         );
 
         data.connectionConfig.isAuthenticated = isAuthenticated;
-        data.connectionConfig.readOnly = readOnly;
+        data.connectionConfig.readOnly = true;
         // user is not authenticated, wait for onAuthenticate
         if (!isAuthenticated) {
           return Promise.resolve();
@@ -108,7 +113,29 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
           },
           LogContext.AUTHENTICATION
         );
-        return { userInfo };
+        return { userInfo, readOnly, socketId: data.socketId };
+      }
+
+      connected(data: connectedPayload): Promise<any> {
+        try {
+          const statelessData = JSON.stringify({
+            event: 'read-only',
+            readOnly: data.connectionConfig.readOnly,
+          });
+          data.connection.sendStateless(statelessData);
+        } catch (e: any) {
+          logger.error(
+            {
+              message: '[connected] Failed to send stateless data to the client.',
+              error: e,
+              documentId: data.documentName,
+            },
+            e?.stack,
+            LogContext.AUTHENTICATION
+          );
+        }
+
+        return Promise.resolve();
       }
 
       /**
@@ -162,7 +189,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
         );
 
         // user is authenticated, and has read access to the document
-        return { userInfo };
+        return { userInfo, readOnly, socketId: data.socketId };
       }
     })();
   },
