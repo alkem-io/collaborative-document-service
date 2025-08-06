@@ -3,6 +3,7 @@ import { StatelessBaseMessage } from './stateless.base.message';
 export interface StatelessReadOnlyStateMessage extends StatelessBaseMessage {
   event: 'read-only-state';
   readOnly: boolean;
+  reason?: string;
 }
 
 export const isStatelessReadOnlyStateMessage = (

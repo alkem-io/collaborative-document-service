@@ -1,11 +1,6 @@
 import { Doc } from 'yjs';
 import { WinstonLogger } from 'nest-winston';
-import {
-  afterStoreDocumentPayload,
-  Extension,
-  onLoadDocumentPayload,
-  onStoreDocumentPayload,
-} from '@hocuspocus/server';
+import { Extension, onLoadDocumentPayload, onStoreDocumentPayload } from '@hocuspocus/server';
 import { FactoryProvider } from '@nestjs/common';
 import { LogContext } from '@common/enums';
 import { UtilService } from '@src/services/util';
