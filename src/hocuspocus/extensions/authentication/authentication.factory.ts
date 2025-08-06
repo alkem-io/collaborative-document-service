@@ -13,6 +13,22 @@ import { AbstractAuthentication } from './abstract.authentication';
 import { ForbiddenException } from './forbidden.exception';
 import { UserInfo } from '@src/services/integration/types';
 import { AuthenticationException } from './authentication.exception';
+import { ReadOnlyCode } from './read.only.code';
+import { StatelessReadOnlyStateMessage } from '@src/hocuspocus/stateless-messaging';
+
+type WithAuthContext<T> = T & {
+  context:
+    | {
+        userInfo: UserInfo;
+        readOnly: false;
+        readOnlyReason: never;
+      }
+    | {
+        userInfo: UserInfo;
+        readOnly: true;
+        readOnlyReason: ReadOnlyCode;
+      };
+};
 
 const AuthenticationFactory: FactoryProvider<Extension> = {
   provide: AUTHENTICATION_EXTENSION,
@@ -35,6 +51,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
     ): Promise<{
       isAuthenticated: boolean;
       readOnly: boolean;
+      readOnlyCode?: ReadOnlyCode;
       read: boolean;
       userInfo?: UserInfo;
     }> => {
@@ -51,12 +68,18 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
           error?.stack,
           LogContext.AUTHENTICATION
         );
-        return { isAuthenticated: false, readOnly: false, read: false };
+        return {
+          isAuthenticated: false,
+          read: false,
+          readOnly: false,
+          readOnlyCode: ReadOnlyCode.NOT_AUTHENTICATED,
+        };
       }
 
       // user is authenticated, now check the access to the document
       const { read, update } = await utilService.getUserAccessToMemo(userInfo.id, documentId);
       // user is authenticated, but does not have read access to the document - disconnect
+      // here it does not make sense to potentially retry again in a different hook, since the READ won't change
       if (!read) {
         logger.verbose?.(
           {
@@ -75,9 +98,11 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
           }
         );
       }
+      const readOnly = !update; // if the user DOES NOT have update access, they ARE read-only
+      const readOnlyCode = readOnly ? ReadOnlyCode.NO_UPDATE_ACCESS : undefined;
       // user is authenticated, and has read access to the document
       // push the user info to the context
-      return { isAuthenticated: true, userInfo, read: true, readOnly: !update };
+      return { isAuthenticated: true, userInfo, read: true, readOnly, readOnlyCode };
     };
 
     return new (class Authentication extends AbstractAuthentication {
@@ -113,29 +138,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
           },
           LogContext.AUTHENTICATION
         );
-        return { userInfo, readOnly, socketId: data.socketId };
-      }
-
-      connected(data: connectedPayload): Promise<any> {
-        try {
-          const statelessData = JSON.stringify({
-            event: 'read-only',
-            readOnly: data.connectionConfig.readOnly,
-          });
-          data.connection.sendStateless(statelessData);
-        } catch (e: any) {
-          logger.error(
-            {
-              message: '[connected] Failed to send stateless data to the client.',
-              error: e,
-              documentId: data.documentName,
-            },
-            e?.stack,
-            LogContext.AUTHENTICATION
-          );
-        }
-
-        return Promise.resolve();
+        return { userInfo, readOnly };
       }
 
       /**
@@ -143,7 +146,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
        * which won't happen if there is no token provided to HocuspocusProvider.
        * @param data
        */
-      async onAuthenticate(data: onAuthenticatePayload): Promise<any> {
+      async onAuthenticate(data: WithAuthContext<onAuthenticatePayload>): Promise<any> {
         // client is already authenticated by onConnect
         if (data.connectionConfig.isAuthenticated) {
           return Promise.resolve();
@@ -153,11 +156,8 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
         const { token } = data;
         const authorization = `Bearer ${token}`;
         // check token only
-        const { userInfo, read, readOnly, isAuthenticated } = await authenticateAndAuthorize(
-          'onAuthenticate',
-          data.documentName,
-          { authorization }
-        );
+        const { userInfo, read, readOnly, readOnlyCode, isAuthenticated } =
+          await authenticateAndAuthorize('onAuthenticate', data.documentName, { authorization });
         data.connectionConfig.isAuthenticated = isAuthenticated;
         data.connectionConfig.readOnly = readOnly;
         // user is NOT authenticated - disconnect
@@ -187,9 +187,34 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
           },
           LogContext.AUTHENTICATION
         );
-
         // user is authenticated, and has read access to the document
-        return { userInfo, readOnly, socketId: data.socketId };
+        return { userInfo, readOnly, readOnlyCode };
+      }
+
+      /**
+       * Called once, after a new connection has been successfully established and the user is authenticated.
+       * @param data
+       */
+      connected(data: WithAuthContext<connectedPayload>): Promise<any> {
+        try {
+          const statelessData = JSON.stringify({
+            event: 'read-only-state',
+            readOnly: data.connectionConfig.readOnly,
+          } as StatelessReadOnlyStateMessage);
+          data.connection.sendStateless(statelessData);
+        } catch (e: any) {
+          logger.error(
+            {
+              message: '[connected] Failed to send stateless data to the client.',
+              error: e,
+              documentId: data.documentName,
+            },
+            e?.stack,
+            LogContext.AUTHENTICATION
+          );
+        }
+
+        return Promise.resolve();
       }
     })();
   },
