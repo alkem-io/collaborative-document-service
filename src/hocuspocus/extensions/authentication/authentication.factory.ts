@@ -1,0 +1,222 @@
+import {
+  connectedPayload,
+  Extension,
+  onAuthenticatePayload,
+  onConnectPayload,
+} from '@hocuspocus/server';
+import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
+import { FactoryProvider } from '@nestjs/common';
+import { LogContext } from '@common/enums';
+import { UtilService } from '@src/services/util';
+import { AUTHENTICATION_EXTENSION } from './authentication.extension.token';
+import { AbstractAuthentication } from './abstract.authentication';
+import { ForbiddenException } from './forbidden.exception';
+import { UserInfo } from '@src/services/integration/types';
+import { AuthenticationException } from './authentication.exception';
+import { ReadOnlyCode } from './read.only.code';
+import { StatelessReadOnlyStateMessage } from '@src/hocuspocus/stateless-messaging';
+
+type WithAuthContext<T> = T & {
+  context:
+    | {
+        userInfo: UserInfo;
+        readOnly: false;
+        readOnlyReason: never;
+      }
+    | {
+        userInfo: UserInfo;
+        readOnly: true;
+        readOnlyReason: ReadOnlyCode;
+      };
+};
+
+const AuthenticationFactory: FactoryProvider<Extension> = {
+  provide: AUTHENTICATION_EXTENSION,
+  inject: [UtilService, WINSTON_MODULE_NEST_PROVIDER],
+  useFactory: (utilService: UtilService, logger: WinstonLogger) => {
+    /**
+     *
+     * @param handleName
+     * @param documentId
+     * @param auth
+     * @throws ForbiddenException If the user is authenticated but does not have read access to the document.
+     */
+    const authenticateAndAuthorize = async (
+      handleName: string,
+      documentId: string,
+      auth: {
+        cookie?: string;
+        authorization?: string;
+      }
+    ): Promise<{
+      isAuthenticated: boolean;
+      readOnly: boolean;
+      readOnlyCode?: ReadOnlyCode;
+      read: boolean;
+      userInfo?: UserInfo;
+    }> => {
+      const { cookie, authorization } = auth;
+      let userInfo: UserInfo | undefined;
+      try {
+        userInfo = await utilService.getUserInfo({ cookie, authorization });
+      } catch (error: any) {
+        logger.error(
+          {
+            message: `[${handleName}] Getting the client info failed. Defaulting to readOnly=true, isAuthenticated=false.`,
+            error,
+          },
+          error?.stack,
+          LogContext.AUTHENTICATION
+        );
+        return {
+          isAuthenticated: false,
+          read: false,
+          readOnly: false,
+          readOnlyCode: ReadOnlyCode.NOT_AUTHENTICATED,
+        };
+      }
+
+      // user is authenticated, now check the access to the document
+      const { read, update } = await utilService.getUserAccessToMemo(userInfo.id, documentId);
+      // user is authenticated, but does not have read access to the document - disconnect
+      // here it does not make sense to potentially retry again in a different hook, since the READ won't change
+      if (!read) {
+        logger.verbose?.(
+          {
+            message: `[${handleName}] Client is authenticated but does not have READ access to the document.`,
+            userId: userInfo?.email,
+            documentId,
+          },
+          LogContext.AUTHENTICATION
+        );
+        throw new ForbiddenException(
+          'User does not have read access to this document.',
+          LogContext.AUTHENTICATION,
+          {
+            userId: userInfo.id,
+            documentId,
+          }
+        );
+      }
+      const readOnly = !update; // if the user DOES NOT have update access, they ARE read-only
+      const readOnlyCode = readOnly ? ReadOnlyCode.NO_UPDATE_ACCESS : undefined;
+      // user is authenticated, and has read access to the document
+      // push the user info to the context
+      return { isAuthenticated: true, userInfo, read: true, readOnly, readOnlyCode };
+    };
+
+    return new (class Authentication extends AbstractAuthentication {
+      /**
+       * Called once, when a client is connecting.
+       * This is the first method called by the server.
+       * Whatever you return will be part of the context field on each hooks
+       * @param data
+       */
+      async onConnect(data: onConnectPayload): Promise<any> {
+        const { cookie, authorization } = data.requestHeaders;
+        const { userInfo, read, readOnly, isAuthenticated } = await authenticateAndAuthorize(
+          'onConnect',
+          data.documentName,
+          {
+            cookie,
+            authorization,
+          }
+        );
+
+        data.connectionConfig.isAuthenticated = isAuthenticated;
+        data.connectionConfig.readOnly = readOnly;
+        // user is not authenticated, wait for onAuthenticate
+        if (!isAuthenticated) {
+          return Promise.resolve();
+        }
+
+        logger.verbose?.(
+          {
+            message: `[onConnect] User authenticated with flags read=${read},readOnly=${readOnly}`,
+            userId: userInfo?.email,
+            documentId: data.documentName,
+          },
+          LogContext.AUTHENTICATION
+        );
+        return { userInfo, readOnly };
+      }
+
+      /**
+       * Only called after the client has sent the Auth message,
+       * which won't happen if there is no token provided to HocuspocusProvider.
+       * @param data
+       */
+      async onAuthenticate(data: WithAuthContext<onAuthenticatePayload>): Promise<any> {
+        // client is already authenticated by onConnect
+        if (data.connectionConfig.isAuthenticated) {
+          return Promise.resolve();
+        }
+        // user has not been authenticated in onConnect, last chance to authenticate
+        // treat the token as a bearer token
+        const { token } = data;
+        const authorization = `Bearer ${token}`;
+        // check token only
+        const { userInfo, read, readOnly, readOnlyCode, isAuthenticated } =
+          await authenticateAndAuthorize('onAuthenticate', data.documentName, { authorization });
+        data.connectionConfig.isAuthenticated = isAuthenticated;
+        data.connectionConfig.readOnly = readOnly;
+        // user is NOT authenticated - disconnect
+        if (!isAuthenticated) {
+          logger.verbose?.(
+            {
+              message: '[onAuthenticate] Client failed to authenticate.',
+              userId: userInfo?.email,
+              documentId: data.documentName,
+            },
+            LogContext.AUTHENTICATION
+          ); // user is not authenticated, disconnect
+          throw new AuthenticationException(
+            'User is not authenticated.',
+            LogContext.AUTHENTICATION,
+            {
+              userId: userInfo?.id,
+              documentId: data.documentName,
+            }
+          );
+        }
+        logger.verbose?.(
+          {
+            message: `[onAuthenticate] Client authenticated with flags read=${read},readOnly=${readOnly}`,
+            userId: userInfo?.email,
+            documentId: data.documentName,
+          },
+          LogContext.AUTHENTICATION
+        );
+        // user is authenticated, and has read access to the document
+        return { userInfo, readOnly, readOnlyCode };
+      }
+
+      /**
+       * Called once, after a new connection has been successfully established and the user is authenticated.
+       * @param data
+       */
+      connected(data: WithAuthContext<connectedPayload>): Promise<any> {
+        try {
+          const statelessData = JSON.stringify({
+            event: 'read-only-state',
+            readOnly: data.connectionConfig.readOnly,
+          } as StatelessReadOnlyStateMessage);
+          data.connection.sendStateless(statelessData);
+        } catch (e: any) {
+          logger.error(
+            {
+              message: '[connected] Failed to send stateless data to the client.',
+              error: e,
+              documentId: data.documentName,
+            },
+            e?.stack,
+            LogContext.AUTHENTICATION
+          );
+        }
+
+        return Promise.resolve();
+      }
+    })();
+  },
+};
+export default AuthenticationFactory;
