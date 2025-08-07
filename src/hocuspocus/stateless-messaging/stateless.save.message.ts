@@ -19,6 +19,6 @@ export const isStatelessSaveMessage = (
 
 export const isStatelessSaveErrorMessage = (
   data: StatelessBaseMessage
-): data is StatelessSaveMessage => {
+): data is StatelessSaveErrorMessage => {
   return data.event === 'save-error';
 };

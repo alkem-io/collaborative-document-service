@@ -3,6 +3,5 @@ export * from './timeout.exception';
 export * from './retry.exception';
 
 export * from './message.pattern.enum';
-export * from './event.pattern.enum';
 
 export * from './user.info';

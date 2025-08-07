@@ -8,8 +8,6 @@ import { InfoOutputData, isFetchErrorData } from '../integration/outputs';
 import { IntegrationService } from '../integration';
 import { FetchException } from '@src/services/util/fetch.exception';
 
-import { Editor } from '@tiptap/core';
-import Collaboration from '@tiptap/extension-collaboration';
 import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
 
 @Injectable()
@@ -37,7 +35,7 @@ export class UtilService {
     }
 
     throw new NotProvidedException(
-      'Not able to get user info. At least one of: Cookie and Authorization headers need not be provided',
+      'Not able to get user info. At least one of: Cookie and Authorization headers needs to be provided',
       LogContext.INTEGRATION
     );
   }
@@ -108,27 +106,5 @@ const binaryStateV2ToYjsDoc = (binaryV2State: Buffer | undefined): Y.Doc => {
     Y.applyUpdateV2(doc, new Uint8Array(binaryV2State));
   }
 
-  return doc;
-};
-
-const yjsDocToMarkdown = (doc: Y.Doc): string => {
-  const editor = new Editor({
-    extensions: [
-      Collaboration.configure({
-        document: doc,
-        field: 'default',
-      }),
-    ],
-    editable: false,
-  });
-
-  // The editor's getText() returns the Markdown string
-  return editor.getText();
-};
-
-const markdownToYjsDoc = (markdown: string): Y.Doc => {
-  const doc = new Y.Doc();
-  // const yText = doc.getText('default');
-  // yText.insert(0, markdown);
   return doc;
 };

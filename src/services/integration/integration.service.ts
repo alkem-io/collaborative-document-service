@@ -7,7 +7,6 @@ import { firstValueFrom, timer } from 'rxjs';
 import { LogContext } from '@common/enums';
 import { ConfigType } from '@src/config';
 import {
-  IntegrationEventPattern,
   IntegrationMessagePattern,
   RetryException,
   RMQConnectionError,
@@ -29,12 +28,13 @@ import {
   SaveErrorData,
   SaveOutputData,
 } from './outputs';
+import { NotInitializedException } from '@common/exceptions';
 
 @Injectable()
 export class IntegrationService implements OnModuleInit, OnModuleDestroy {
   private client: ClientProxy | undefined;
   private readonly timeoutMs: number;
-  private readonly retries: number;
+  private readonly maxRetries: number;
 
   constructor(
     @Inject(WINSTON_MODULE_NEST_PROVIDER) private logger: WinstonLogger,
@@ -43,7 +43,7 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
     this.timeoutMs = this.configService.get('settings.application.queue_response_timeout', {
       infer: true,
     });
-    this.retries = this.configService.get('settings.application.queue_request_retries', {
+    this.maxRetries = this.configService.get('settings.application.queue_request_retries', {
       infer: true,
     });
   }
@@ -64,12 +64,10 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
     );
 
     if (!this.client) {
-      this.logger.error(
-        `${IntegrationService.name} not initialized`,
-        undefined,
+      throw new NotInitializedException(
+        `${IntegrationService.name} failed to initialize: Client proxy could not be created`,
         LogContext.INTEGRATION
       );
-      return;
     }
 
     try {
@@ -118,6 +116,14 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
         data
       );
     } catch (e: any) {
+      this.logger.error(
+        {
+          message: 'Save request failed',
+          error: e,
+        },
+        e?.stack,
+        LogContext.INTEGRATION
+      );
       return new SaveOutputData(new SaveErrorData(e?.message ?? JSON.stringify(e)));
     }
   }
@@ -129,6 +135,14 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
         data
       );
     } catch (e: any) {
+      this.logger.error(
+        {
+          message: 'Fetch request failed',
+          error: e,
+        },
+        e?.stack,
+        LogContext.INTEGRATION
+      );
       return new FetchOutputData(
         new FetchErrorData(e?.message ?? JSON.stringify(e), FetchErrorCodes.INTERNAL_ERROR)
       );
@@ -154,7 +168,7 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
     }
 
     const timeoutMs = options?.timeoutMs ?? this.timeoutMs;
-    const retries = options?.retries ?? this.retries;
+    const maxRetries = options?.retries ?? this.maxRetries;
 
     const result$ = this.client.send<TResult, TInput>(pattern, data).pipe(
       timeInterval(),
@@ -162,26 +176,26 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
         each: timeoutMs,
         with: () => {
           throw new TimeoutException(LogContext.INTEGRATION, {
-            timeout: this.timeoutMs,
+            timeout: timeoutMs,
             pattern,
             data,
           });
         },
       }),
       retry({
-        count: retries,
+        count: maxRetries,
         delay: (error, retryCount) => {
-          if (retryCount === this.retries) {
+          if (retryCount === maxRetries) {
             throw new RetryException(LogContext.INTEGRATION, {
-              retries: this.retries,
+              retries: maxRetries,
               data,
               originalError: error,
-              cause: `Max retries (${this.retries}) reached`,
+              cause: `Max retries (${maxRetries}) reached`,
             });
           }
 
           this.logger.warn?.(
-            `Retrying request to collaboration service [${++retryCount}/${this.retries}]`,
+            `Retrying request to collaboration service [${retryCount + 1}/${maxRetries}]`,
             LogContext.INTEGRATION
           );
           // exponential backoff strategy
@@ -217,7 +231,7 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
           if (error instanceof RetryException) {
             this.logger.error(
               {
-                message: `Max retries reached (${this.retries}) while waiting for response`,
+                message: `Max retries reached (${this.maxRetries}) while waiting for response`,
                 pattern,
                 timeout: timeoutMs,
               },
@@ -294,32 +308,6 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
     );
 
     return firstValueFrom(result$);
-  };
-
-  /**
-   * Sends a message to the queue without waiting for a response.
-   * Each consumer needs to manually handle failures, returning the proper type.
-   * @param pattern
-   * @param data
-   */
-  private sendWithoutResponse = <TInput>(
-    pattern: IntegrationEventPattern,
-    data: TInput
-  ): void | never => {
-    if (!this.client) {
-      throw new Error('Connection was not established. Send failed.');
-    }
-
-    this.logger.debug?.(
-      {
-        method: 'sendWithoutResponse',
-        pattern,
-        data,
-      },
-      LogContext.INTEGRATION
-    );
-
-    this.client.emit<void, TInput>(pattern, data);
   };
 }
 

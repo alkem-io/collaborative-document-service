@@ -21,7 +21,7 @@ WORKDIR /usr/src/app
 COPY --from=builder /usr/src/app/dist ./dist
 COPY --from=builder /usr/src/app/package.json ./package.json
 COPY --from=builder /usr/src/app/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY ./config.yml ./config.yml
+COPY --from=builder /usr/src/app/config.yml ./config.yml
 
 # Re-install dependencies in the final stage
 # This step is crucial for pnpm. We install only production dependencies

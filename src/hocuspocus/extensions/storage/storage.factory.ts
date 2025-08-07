@@ -1,18 +1,29 @@
 import { Doc } from 'yjs';
-import { WinstonLogger } from 'nest-winston';
-import { Extension, onLoadDocumentPayload, onStoreDocumentPayload } from '@hocuspocus/server';
+import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
+import {
+  afterStoreDocumentPayload,
+  Extension,
+  onLoadDocumentPayload,
+  onStoreDocumentPayload,
+} from '@hocuspocus/server';
 import { FactoryProvider } from '@nestjs/common';
 import { LogContext } from '@common/enums';
 import { UtilService } from '@src/services/util';
 import { isSaveErrorData } from '@src/services/integration/outputs';
 import { STORAGE_EXTENSION } from './storage.extension.token';
 import { AbstractStorage } from './abstract.storage';
-import { afterStoreDocumentWithContextPayload } from '@src/hocuspocus/extensions/storage/after.store.document.with.context.payload';
-import { StatelessMessage } from '@src/hocuspocus/stateless-messaging';
+import { StatelessMessage } from '../../stateless-messaging';
+
+type WithStorageContext<T> = T & {
+  context: {
+    saved: boolean;
+    error?: string;
+  };
+};
 
 const StorageFactory: FactoryProvider<Extension> = {
   provide: STORAGE_EXTENSION,
-  inject: [UtilService],
+  inject: [UtilService, WINSTON_MODULE_NEST_PROVIDER],
   useFactory: (utilService: UtilService, logger: WinstonLogger) => {
     return new (class Storage extends AbstractStorage {
       /**
@@ -51,7 +62,7 @@ const StorageFactory: FactoryProvider<Extension> = {
         return Promise.resolve();
       }
 
-      public afterStoreDocument(data: afterStoreDocumentWithContextPayload): Promise<any> {
+      public afterStoreDocument(data: WithStorageContext<afterStoreDocumentPayload>): Promise<any> {
         const { document, context } = data;
         const statelessData = this.encodeStateless(
           context.error
