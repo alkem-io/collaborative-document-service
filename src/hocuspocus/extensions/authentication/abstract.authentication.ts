@@ -1,4 +1,4 @@
-import { Extension, onConnectPayload } from '@hocuspocus/server';
+import { Extension, onAuthenticatePayload, onConnectPayload } from '@hocuspocus/server';
 
 export abstract class AbstractAuthentication implements Extension {
   /**
@@ -11,5 +11,5 @@ export abstract class AbstractAuthentication implements Extension {
    * Only called after the client has sent the Auth message,
    * which won't happen if there is no token provided to HocuspocusProvider.
    */
-  public abstract onAuthenticate(data: onConnectPayload): Promise<any>;
+  public abstract onAuthenticate(data: onAuthenticatePayload): Promise<any>;
 }

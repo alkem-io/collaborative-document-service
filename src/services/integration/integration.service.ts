@@ -231,7 +231,7 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
           if (error instanceof RetryException) {
             this.logger.error(
               {
-                message: `Max retries reached (${this.maxRetries}) while waiting for response`,
+                message: `Max retries reached (${maxRetries}) while waiting for response`,
                 pattern,
                 timeout: timeoutMs,
               },
