@@ -2,23 +2,23 @@ kind: Deployment
 apiVersion: apps/v1
 metadata:
   namespace: default
-  name: collaborative-document-service-deployment
+  name: alkemio-collaborative-document-service-deployment
   labels:
-    app: collaborative-document-service
+    app: alkemio-collaborative-document-service
 
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: collaborative-document-service
+      app: alkemio-collaborative-document-service
   template:
     metadata:
       labels:
-        app: collaborative-document-service
+        app: alkemio-collaborative-document-service
     spec:
       containers:
-        - name: collaborative-document-service
-          image: alkemio.azurecr.io/collaborative-document-service:latest
+        - name: alkemio-collaborative-document-service
+          image: alkemio.azurecr.io/alkemio-collaborative-document-service:latest
           env:
             - name: RABBITMQ_HOST
               valueFrom:
