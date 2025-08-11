@@ -27,6 +27,9 @@ This microservice enables and supports real-time co-editing of various types of 
     * [Hocuspocus Client](https://tiptap.dev/docs/hocuspocus/guides/collaborative-editing): The client-side library for connecting to the Hocuspocus server.
     * (Assumed: A modern JavaScript framework like React, Vue, or plain JavaScript for the UI, integrating with the Hocuspocus client for collaboration)
 
+## 🔍 Detailed overview
+For more detailed view over the architecture, features, and usage, please refer to the [docs](./docs/index.md).
+
 ## **📦 Getting Started**
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
