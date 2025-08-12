@@ -17,17 +17,11 @@ import { ReadOnlyCode } from './read.only.code';
 import { StatelessReadOnlyStateMessage } from '@src/hocuspocus/stateless-messaging';
 
 type WithAuthContext<T> = T & {
-  context:
-    | {
-        userInfo: UserInfo;
-        readOnly: false;
-        readOnlyReason: never;
-      }
-    | {
-        userInfo: UserInfo;
-        readOnly: true;
-        readOnlyReason: ReadOnlyCode;
-      };
+  context: {
+    userInfo: UserInfo;
+    readOnly: boolean;
+    readOnlyReason?: ReadOnlyCode;
+  };
 };
 
 const AuthenticationFactory: FactoryProvider<Extension> = {
@@ -54,6 +48,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
       readOnlyCode?: ReadOnlyCode;
       read: boolean;
       userInfo?: UserInfo;
+      isMultiUser: boolean;
     }> => {
       const { cookie, authorization } = auth;
       let userInfo: UserInfo | undefined;
@@ -73,11 +68,15 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
           read: false,
           readOnly: false,
           readOnlyCode: ReadOnlyCode.NOT_AUTHENTICATED,
+          isMultiUser: false,
         };
       }
 
       // user is authenticated, now check the access to the document
-      const { read, update } = await utilService.getUserAccessToMemo(userInfo.id, documentId);
+      const { read, update, isMultiUser } = await utilService.getUserAccessToMemo(
+        userInfo.id,
+        documentId
+      );
       // user is authenticated, but does not have read access to the document - disconnect
       // here it does not make sense to potentially retry again in a different hook, since the READ won't change
       if (!read) {
@@ -102,7 +101,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
       const readOnlyCode = readOnly ? ReadOnlyCode.NO_UPDATE_ACCESS : undefined;
       // user is authenticated, and has read access to the document
       // push the user info to the context
-      return { isAuthenticated: true, userInfo, read: true, readOnly, readOnlyCode };
+      return { isAuthenticated: true, userInfo, read: true, readOnly, readOnlyCode, isMultiUser };
     };
 
     return new (class Authentication extends AbstractAuthentication {
@@ -114,14 +113,11 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
        */
       async onConnect(data: onConnectPayload): Promise<any> {
         const { cookie, authorization } = data.requestHeaders;
-        const { userInfo, read, readOnly, isAuthenticated } = await authenticateAndAuthorize(
-          'onConnect',
-          data.documentName,
-          {
+        const { userInfo, read, readOnly, readOnlyCode, isAuthenticated, isMultiUser } =
+          await authenticateAndAuthorize('onConnect', data.documentName, {
             cookie,
             authorization,
-          }
-        );
+          });
 
         data.connectionConfig.isAuthenticated = isAuthenticated;
         data.connectionConfig.readOnly = readOnly;
@@ -138,7 +134,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
           },
           LogContext.AUTHENTICATION
         );
-        return { userInfo, readOnly };
+        return { userInfo, readOnly, readOnlyCode, isMultiUser };
       }
 
       /**
@@ -200,6 +196,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
           const statelessData = JSON.stringify({
             event: 'read-only-state',
             readOnly: data.connectionConfig.readOnly,
+            readOnlyCode: data.context.readOnlyReason,
           } as StatelessReadOnlyStateMessage);
           data.connection.sendStateless(statelessData);
         } catch (e: any) {
