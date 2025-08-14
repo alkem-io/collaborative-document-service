@@ -135,8 +135,8 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
       if (collaboratorCount === 1 && !isMultiUser) {
         return { readOnly: true, readOnlyCode: ReadOnlyCode.MULTI_USER_NOT_ALLOWED };
       }
-
-      if (collaboratorCount === maxCollaborators) {
+      // Using === allows exactly maxCollaborators but would permit maxCollaborators + 1 in race conditions
+      if (collaboratorCount >= maxCollaborators) {
         return { readOnly: true, readOnlyCode: ReadOnlyCode.ROOM_CAPACITY_REACHED };
       }
 
