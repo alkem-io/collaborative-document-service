@@ -3,7 +3,7 @@ import { Server } from '@hocuspocus/server';
 import { ConfigService } from '@nestjs/config';
 import { ConfigType } from '../config';
 import { AUTHENTICATION_EXTENSION } from '@src/hocuspocus/extensions/authentication';
-import { AbstractAuthentication } from '@src/hocuspocus/extensions/authentication';
+import { AbstractAuthenticator } from '@src/hocuspocus/extensions/authentication';
 import { AbstractStorage, STORAGE_EXTENSION } from '@src/hocuspocus/extensions/storage';
 
 @Injectable()
@@ -12,7 +12,7 @@ export class HocuspocusServer implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly config: ConfigService<ConfigType, true>,
-    @Inject(AUTHENTICATION_EXTENSION) Authentication: AbstractAuthentication,
+    @Inject(AUTHENTICATION_EXTENSION) Authentication: AbstractAuthenticator,
     @Inject(STORAGE_EXTENSION) Storage: AbstractStorage
   ) {
     this.hocuspocusServer = new Server({

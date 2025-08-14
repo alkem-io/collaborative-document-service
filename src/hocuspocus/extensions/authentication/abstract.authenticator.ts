@@ -1,6 +1,6 @@
 import { Extension, onAuthenticatePayload, onConnectPayload } from '@hocuspocus/server';
 
-export abstract class AbstractAuthentication implements Extension {
+export abstract class AbstractAuthenticator implements Extension {
   /**
    * Called once, when a client is connecting.
    * This is the first method called by the server.
