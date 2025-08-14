@@ -57,6 +57,8 @@ export class UtilService {
       return {
         read: false,
         update: false,
+        isMultiUser: false,
+        maxCollaborators: 0,
       };
     }
   }
