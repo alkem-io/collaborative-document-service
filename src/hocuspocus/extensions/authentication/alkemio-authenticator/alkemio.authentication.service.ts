@@ -5,7 +5,7 @@ import { UtilService } from '@src/services/util';
 import { UserInfo } from '@src/services/integration/types';
 
 @Injectable()
-export class AuthenticationService {
+export class AlkemioAuthenticationService {
   constructor(
     private readonly utilService: UtilService,
     @Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: WinstonLogger

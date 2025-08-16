@@ -1,10 +1,16 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
-import { Server } from '@hocuspocus/server';
 import { ConfigService } from '@nestjs/config';
+import { Extension, Hocuspocus, Server } from '@hocuspocus/server';
 import { ConfigType } from '../config';
-import { AUTHENTICATION_EXTENSION } from '@src/hocuspocus/extensions/authentication';
-import { AbstractAuthenticator } from '@src/hocuspocus/extensions/authentication';
 import { AbstractStorage, STORAGE_EXTENSION } from '@src/hocuspocus/extensions/storage';
+import {
+  AlkemioAuthorizer,
+  ALKEMIO_AUTHORIZATION_EXTENSION,
+} from './extensions/authorization/alkemio-authorizer';
+import {
+  AlkemioAuthenticator,
+  ALKEMIO_AUTHENTICATION_EXTENSION,
+} from './extensions/authentication/alkemio-authenticator';
 
 @Injectable()
 export class HocuspocusServer implements OnModuleInit, OnModuleDestroy {
@@ -12,11 +18,13 @@ export class HocuspocusServer implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly config: ConfigService<ConfigType, true>,
-    @Inject(AUTHENTICATION_EXTENSION) Authentication: AbstractAuthenticator,
+    @Inject(ALKEMIO_AUTHENTICATION_EXTENSION) Authentication: AlkemioAuthenticator,
+    @Inject(ALKEMIO_AUTHORIZATION_EXTENSION) Authorization: AlkemioAuthorizer,
     @Inject(STORAGE_EXTENSION) Storage: AbstractStorage
   ) {
+    const extensions = sortExtensions([Authentication, Authorization, Storage]);
     this.hocuspocusServer = new Server({
-      extensions: [Authentication, Storage],
+      extensions,
     });
   }
   async onModuleInit() {
@@ -31,4 +39,53 @@ export class HocuspocusServer implements OnModuleInit, OnModuleDestroy {
   public getServer(): Server {
     return this.hocuspocusServer;
   }
+
+  public getInstance(): Hocuspocus {
+    return this.hocuspocusServer.hocuspocus;
+  }
+
+  /**
+   * @returns The number of registered connections to the document. That does not include direct connections.
+   */
+  getConnections(instance: Hocuspocus, documentName: string) {
+    return instance.documents.get(documentName)?.getConnections() ?? [];
+  }
+
+  /**
+   * Gets all read-only connections for a document.
+   */
+  getReadOnlyConnections(instance: Hocuspocus, documentName: string) {
+    const connections = this.getConnections(instance, documentName);
+
+    if (!connections || connections.length === 0) {
+      return [];
+    }
+
+    return connections.filter(connection => connection.readOnly);
+  }
+
+  /**
+   * Gets all collaborator (non-read-only) connections for a document.
+   */
+  getCollaboratorConnections(instance: Hocuspocus, documentName: string) {
+    const connections = this.getConnections(instance, documentName);
+
+    if (!connections || connections.length === 0) {
+      return [];
+    }
+
+    return connections.filter(connection => !connection.readOnly);
+  }
 }
+/**
+ * Assigns a sort order to extensions based on their order in the array,
+ * starting from index 0, assigning it the highest priority.
+ * @param array
+ */
+const sortExtensions = (array: Array<Extension>): Array<Extension> => {
+  const highestPriority = array.length;
+  return array.map((extension, index) => {
+    extension.priority = highestPriority - index;
+    return extension;
+  });
+};

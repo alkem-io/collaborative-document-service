@@ -1,2 +1,1 @@
-export * from './auth.interfaces';
-export * from './read.only.code';
+export * from './authentication.interfaces';

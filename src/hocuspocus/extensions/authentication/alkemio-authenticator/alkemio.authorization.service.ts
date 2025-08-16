@@ -1,27 +1,28 @@
 import { Injectable } from '@nestjs/common';
 import { UtilService } from '@src/services/util';
-import { DocumentAccessInfo, ReadOnlyCode, ReadOnlyState } from '../types';
+import { ReadOnlyCode } from '@src/hocuspocus/extensions/authorization/types';
+import { ReadOnlyState } from '../types';
 
 @Injectable()
-export class AuthorizationService {
+export class AlkemioAuthorizationService {
   constructor(private readonly utilService: UtilService) {}
 
   /**
    * Checks if user has access to the document.
    */
-  public async getDocumentAccessAndInfo(
-    userId: string,
-    documentId: string
-  ): Promise<DocumentAccessInfo> {
-    const {
-      read: canRead,
-      update: canUpdate,
-      isMultiUser,
-      maxCollaborators,
-    } = await this.utilService.getUserAccessToMemo(userId, documentId);
-
-    return { canRead, canUpdate, isMultiUser, maxCollaborators };
-  }
+  // public async getDocumentAccessAndInfo(
+  //   userId: string,
+  //   documentId: string
+  // ): Promise<DocumentAccessInfo> {
+  //   const {
+  //     read: canRead,
+  //     update: canUpdate,
+  //     isMultiUser,
+  //     maxCollaborators,
+  //   } = await this.utilService.getUserAccessToMemo(userId, documentId);
+  //
+  //   return { canRead, canUpdate, isMultiUser, maxCollaborators };
+  // }
 
   /**
    * Calculates the read-only state based on user permissions and document constraints.
