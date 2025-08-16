@@ -2,7 +2,6 @@ import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/commo
 import { ConfigService } from '@nestjs/config';
 import { Extension, Hocuspocus, Server } from '@hocuspocus/server';
 import { ConfigType } from '../config';
-import { AbstractStorage, STORAGE_EXTENSION } from '@src/hocuspocus/extensions/storage';
 import {
   AlkemioAuthorizer,
   ALKEMIO_AUTHORIZATION_EXTENSION,
@@ -11,6 +10,10 @@ import {
   AlkemioAuthenticator,
   ALKEMIO_AUTHENTICATION_EXTENSION,
 } from './extensions/authentication/alkemio-authenticator';
+import {
+  ALKEMIO_STORAGE_EXTENSION,
+  AlkemioStorage,
+} from '@src/hocuspocus/extensions/storage/alkemio-storage';
 
 @Injectable()
 export class HocuspocusServer implements OnModuleInit, OnModuleDestroy {
@@ -20,7 +23,7 @@ export class HocuspocusServer implements OnModuleInit, OnModuleDestroy {
     private readonly config: ConfigService<ConfigType, true>,
     @Inject(ALKEMIO_AUTHENTICATION_EXTENSION) Authentication: AlkemioAuthenticator,
     @Inject(ALKEMIO_AUTHORIZATION_EXTENSION) Authorization: AlkemioAuthorizer,
-    @Inject(STORAGE_EXTENSION) Storage: AbstractStorage
+    @Inject(ALKEMIO_STORAGE_EXTENSION) Storage: AlkemioStorage
   ) {
     const extensions = sortExtensions([Authentication, Authorization, Storage]);
     this.hocuspocusServer = new Server({
