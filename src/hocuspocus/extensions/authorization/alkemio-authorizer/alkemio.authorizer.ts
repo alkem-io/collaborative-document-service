@@ -63,7 +63,7 @@ export class AlkemioAuthorizer extends AbstractAuthorizer {
     return {
       ...result,
       userInfo,
-      authorizedBy: 'onConnect',
+      authorizedBy: 'onAuthenticate',
     };
   }
 
@@ -83,7 +83,7 @@ export class AlkemioAuthorizer extends AbstractAuthorizer {
           documentId: data.documentName,
         },
         e?.stack,
-        LogContext.AUTHENTICATION
+        LogContext.AUTHORIZATION
       );
     }
 
@@ -118,7 +118,7 @@ export class AlkemioAuthorizer extends AbstractAuthorizer {
           collaboratorCount,
           readOnlyCount,
         },
-        LogContext.AUTHENTICATION
+        LogContext.AUTHORIZATION
       );
     }
 
@@ -147,12 +147,12 @@ export class AlkemioAuthorizer extends AbstractAuthorizer {
           userId,
           documentId,
         },
-        LogContext.AUTHENTICATION
+        LogContext.AUTHORIZATION
       );
 
       throw new ForbiddenException(
         'User does not have read access to this document.',
-        LogContext.AUTHENTICATION,
+        LogContext.AUTHORIZATION,
         { userId, documentId }
       );
     }
