@@ -8,7 +8,6 @@ import {
 } from '@hocuspocus/server';
 import { LogContext } from '@common/enums';
 import { StatelessReadOnlyStateMessage } from '@src/hocuspocus/stateless-messaging';
-import { WithAuthenticationContext } from '@src/hocuspocus/extensions/authentication/types';
 import { HocuspocusConnectionService } from '@src/hocuspocus/services';
 import { AlkemioAuthorizationService } from './alkemio.authorization.service';
 import { AbstractAuthorizer } from '../abstract.authorizer';
