@@ -16,7 +16,6 @@ export class AlkemioStorageService {
   /**
    * Loads a document from storage
    * @param documentId - The ID of the document to load
-   * @returns Promise resolving to the document or null if not found
    */
   public async loadDocument(documentId: string): Promise<Doc> {
     return this.utilService.fetchMemo(documentId);
