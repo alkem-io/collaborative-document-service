@@ -27,7 +27,7 @@ export interface ConfigType {
       max_http_buffer_size: number;
     };
     collaboration: {
-      enabled: boolean;
+      contribution_window: number;
     };
   };
 }
