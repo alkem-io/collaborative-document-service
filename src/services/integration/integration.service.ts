@@ -7,19 +7,20 @@ import { firstValueFrom, timer } from 'rxjs';
 import { LogContext } from '@common/enums';
 import { ConfigType } from '@src/config';
 import {
+  IntegrationEventPattern,
   IntegrationMessagePattern,
   RetryException,
   RMQConnectionError,
   TimeoutException,
   UserInfo,
 } from './types';
-import { HealthCheckOutputData } from './outputs';
 import {
   FetchInputData,
   InfoInputData,
   SaveInputData,
   WhoInputData,
-} from '@src/services/integration/inputs';
+  MemoContributionsInputData,
+} from './inputs';
 import {
   FetchErrorCodes,
   FetchErrorData,
@@ -27,6 +28,7 @@ import {
   InfoOutputData,
   SaveErrorData,
   SaveOutputData,
+  HealthCheckOutputData,
 } from './outputs';
 import { NotInitializedException } from '@common/exceptions';
 
@@ -147,6 +149,10 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
         new FetchErrorData(e?.message ?? JSON.stringify(e), FetchErrorCodes.INTERNAL_ERROR)
       );
     }
+  }
+
+  public async reportMemoContributions(data: MemoContributionsInputData) {
+    return this.sendWithoutResponse(IntegrationEventPattern.MEMO_CONTRIBUTION, data);
   }
 
   /**
@@ -308,6 +314,29 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
     );
 
     return firstValueFrom(result$);
+  };
+
+  /**
+   * Sends a message to the queue without waiting for a response.
+   * Each consumer needs to manually handle failures, returning the proper type.
+   * @param pattern
+   * @param data
+   */
+  private sendWithoutResponse = <TInput>(
+    pattern: IntegrationEventPattern,
+    data: TInput
+  ): void | never => {
+    if (!this.client) {
+      throw new Error('Connection was not established. Send failed.');
+    }
+
+    this.logger.debug?.({
+      method: 'sendWithoutResponse',
+      pattern,
+      data,
+    });
+
+    this.client.emit<void, TInput>(pattern, data);
   };
 }
 

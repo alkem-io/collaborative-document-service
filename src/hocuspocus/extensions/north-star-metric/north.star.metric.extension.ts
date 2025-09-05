@@ -12,16 +12,21 @@ import { ConfigService } from '@nestjs/config';
 import { ConfigType } from '@src/config';
 import { isAbortError } from '@common/util';
 import { LogContext } from '@common/enums';
+import { UserInfo } from '@src/services/integration/types';
 import { ConnectionContext } from '../connection.context';
+import { NorthStartMetricService } from './north.start.metric.service';
 
 @Injectable()
 export class NorthStarMetric implements Extension {
-  private trackerAbortControllers = new Map<string, AbortController>();
-  private readonly contributionWindowMs: number;
   public readonly extensionName: string;
+
+  private readonly trackerAbortControllers = new Map<string, AbortController>();
+  private readonly contributionWindowMs: number;
+
   constructor(
-    @Inject(WINSTON_MODULE_NEST_PROVIDER) private logger: WinstonLogger,
-    private configService: ConfigService<ConfigType, true>
+    @Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: WinstonLogger,
+    private readonly configService: ConfigService<ConfigType, true>,
+    private readonly northStarMetricService: NorthStartMetricService
   ) {
     this.extensionName = NorthStarMetric.name;
     this.contributionWindowMs =
@@ -92,15 +97,26 @@ export class NorthStarMetric implements Extension {
     const end = new Date().getTime();
     const start = end - intervalSize;
 
+    const users: UserInfo[] = [];
     document.getConnections().forEach(connection => {
       const { lastContributed, userInfo } = connection.context as ConnectionContext;
 
       if (lastContributed && lastContributed >= start && lastContributed <= end) {
-        this.logger.verbose?.(
-          `User '${userInfo?.email}' contributed to room '${document.name}' in the last ${intervalSize}ms`,
-          LogContext.NORTH_STAR_METRIC
-        );
+        users.push(userInfo ?? { id: 'N/A', email: 'N/A' });
+
+        if (!userInfo) {
+          this.logger.warn(
+            'A user is eligible for contribution but has no userInfo',
+            LogContext.NORTH_STAR_METRIC
+          );
+        }
       }
     });
+
+    if (users.length === 0) {
+      return;
+    }
+
+    return this.northStarMetricService.reportMemoContributions(document.name, users);
   }
 }
