@@ -8,7 +8,7 @@ describe('NorthStartMetricService', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [NorthStarMetricService],
-    }).us.compile();
+    }).compile();
 
     service = module.get<NorthStarMetricService>(NorthStarMetricService);
   });
