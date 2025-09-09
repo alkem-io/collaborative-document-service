@@ -16,14 +16,18 @@ import { UserInfo } from '@src/services/integration/types';
 import { WithConnectionContext } from '../connection.context';
 import { NorthStarMetricService } from './north.star.metric.service';
 
+type ContributionTrackerRoomData = {
+  abortController: AbortController;
+  contributedUsers: Map<string, UserInfo>;
+};
+
 @Injectable()
 export class NorthStarMetric implements Extension {
   public readonly extensionName: string;
 
-  private readonly trackerAbortControllers = new Map<string, AbortController>();
-  // keep track of users who have contributed in the past interval;
-  // this set MUST be cleared on each interval tick
-  private readonly contributionsInThePastInterval = new Map<string, UserInfo>();
+  // keep track of users per room, who have contributed in the past interval;
+  // this MUST be cleared on each interval tick and on document unload
+  private readonly contributionTrackers = new Map<string, ContributionTrackerRoomData>();
 
   private readonly contributionWindowMs: number;
 
@@ -44,11 +48,26 @@ export class NorthStarMetric implements Extension {
   }
   // update client context about the last time they have changed the document
   onChange(data: WithConnectionContext<onChangePayload>): Promise<any> {
+    if (!data.context.userInfo) {
+      return Promise.resolve();
+    }
+
     data.context.lastContributed = new Date().getTime();
 
-    if (data.context.userInfo) {
-      this.contributionsInThePastInterval.set(data.context.userInfo.id, data.context.userInfo);
+    const thisUserId = data.context.userInfo.id;
+
+    if (!thisUserId) {
+      return Promise.resolve();
     }
+
+    const roomId = data.document.name;
+    const roomData = this.contributionTrackers.get(roomId);
+
+    if (!roomData) {
+      return Promise.resolve();
+    }
+    // add the user to the set of contributors for this room
+    roomData.contributedUsers.set(thisUserId, data.context.userInfo);
 
     return Promise.resolve();
   }
@@ -61,9 +80,11 @@ export class NorthStarMetric implements Extension {
 
   private async startContributionTracker(document: Document) {
     const roomId = document.name;
-
-    const ac = new AbortController();
-    this.trackerAbortControllers.set(roomId, ac);
+    const roomData: ContributionTrackerRoomData = {
+      abortController: new AbortController(),
+      contributedUsers: new Map<string, UserInfo>(),
+    };
+    this.contributionTrackers.set(roomId, roomData);
 
     this.logger.verbose?.(
       `Starting contribution tracker for room '${roomId}' with interval ${this.contributionWindowMs}ms`,
@@ -74,11 +95,13 @@ export class NorthStarMetric implements Extension {
       // the interval will throw if aborted
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       for await (const tick of setInterval(this.contributionWindowMs, null, {
-        signal: ac.signal,
+        signal: roomData.abortController.signal,
       })) {
         this.reportContributions(document);
       }
     } catch (e: any) {
+      this.stopContributionTracker(roomId);
+
       if (isAbortError(e)) {
         this.logger.verbose?.(
           `Contribution tracker for room '${roomId}' was aborted with reason '${e.cause}'`,
@@ -91,21 +114,39 @@ export class NorthStarMetric implements Extension {
           LogContext.NORTH_STAR_METRIC
         );
       }
-    } finally {
-      this.contributionsInThePastInterval.clear();
     }
   }
 
   private stopContributionTracker(roomId: string) {
-    const ac = this.trackerAbortControllers.get(roomId);
-    if (ac) {
-      ac.abort('stop'); // this will trigger an exception in the timer
-      this.trackerAbortControllers.delete(roomId);
+    const tracker = this.contributionTrackers.get(roomId);
+
+    if (!tracker) {
+      this.logger.error(
+        `No contribution tracker found for room '${roomId}'`,
+        LogContext.NORTH_STAR_METRIC
+      );
+      return;
     }
+
+    const ac = tracker.abortController;
+    ac.abort('stop'); // this will trigger an exception in the timer
+
+    this.contributionTrackers.delete(roomId);
   }
 
   private reportContributions(document: Document) {
-    if (this.contributionsInThePastInterval.size === 0) {
+    const roomId = document.name;
+
+    const roomData = this.contributionTrackers.get(roomId);
+    if (!roomData) {
+      this.logger.error(
+        `No contribution tracker found for room '${roomId}'`,
+        LogContext.NORTH_STAR_METRIC
+      );
+      return;
+    }
+
+    if (roomData.contributedUsers.size === 0) {
       this.logger.verbose?.(
         `No contributions to report for document '${document.name}' in the past interval. All Connections were read-only or idle.`,
         LogContext.NORTH_STAR_METRIC
@@ -113,14 +154,13 @@ export class NorthStarMetric implements Extension {
       return;
     }
 
-    const users = Array.from(this.contributionsInThePastInterval.values());
+    const users = Array.from(roomData.contributedUsers.values());
+    roomData.contributedUsers.clear();
 
     this.logger.verbose?.(
       `Reporting ${users.length} contribution ${users.length > 1 ? 's' : ''} for document '${document.name}' in the past interval.`,
       LogContext.NORTH_STAR_METRIC
     );
-
-    this.contributionsInThePastInterval.clear();
 
     this.northStarMetricService.reportMemoContributions(document.name, Array.from(users));
   }
