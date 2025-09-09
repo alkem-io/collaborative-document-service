@@ -5,6 +5,7 @@ import {
   afterUnloadDocumentPayload,
   onChangePayload,
   Document,
+  beforeUnloadDocumentPayload,
 } from '@hocuspocus/server';
 import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
 import { Inject, Injectable } from '@nestjs/common';
@@ -73,13 +74,22 @@ export class NorthStarMetric implements Extension {
   }
   // stop the timer when the document is unloaded
   // this coalesces with the time the room was closed
-  afterUnloadDocument({ documentName }: afterUnloadDocumentPayload): Promise<any> {
-    this.stopContributionTracker(documentName);
+  beforeUnloadDocument({ document }: beforeUnloadDocumentPayload): Promise<any> {
+    this.stopContributionTracker(document);
     return Promise.resolve();
   }
 
   private async startContributionTracker(document: Document) {
     const roomId = document.name;
+
+    if (this.contributionTrackers.has(roomId)) {
+      this.logger.error(
+        `Contribution tracker already running for room '${roomId}'`,
+        LogContext.NORTH_STAR_METRIC
+      );
+      return;
+    }
+
     const roomData: ContributionTrackerRoomData = {
       abortController: new AbortController(),
       contributedUsers: new Map<string, UserInfo>(),
@@ -100,7 +110,7 @@ export class NorthStarMetric implements Extension {
         this.reportContributions(document);
       }
     } catch (e: any) {
-      this.stopContributionTracker(roomId);
+      this.contributionTrackers.delete(roomId);
 
       if (isAbortError(e)) {
         this.logger.verbose?.(
@@ -117,7 +127,8 @@ export class NorthStarMetric implements Extension {
     }
   }
 
-  private stopContributionTracker(roomId: string) {
+  private stopContributionTracker(document: Document) {
+    const roomId = document.name;
     const tracker = this.contributionTrackers.get(roomId);
 
     if (!tracker) {
@@ -127,6 +138,8 @@ export class NorthStarMetric implements Extension {
       );
       return;
     }
+    // Flush before aborting the loop.
+    this.reportContributions(document);
 
     const ac = tracker.abortController;
     ac.abort('stop'); // this will trigger an exception in the timer
@@ -148,7 +161,7 @@ export class NorthStarMetric implements Extension {
 
     if (roomData.contributedUsers.size === 0) {
       this.logger.verbose?.(
-        `No contributions to report for document '${document.name}' in the past interval. All Connections were read-only or idle.`,
+        `No contributions to report for document '${roomId}' in the past interval. All Connections were read-only or idle.`,
         LogContext.NORTH_STAR_METRIC
       );
       return;
@@ -158,10 +171,10 @@ export class NorthStarMetric implements Extension {
     roomData.contributedUsers.clear();
 
     this.logger.verbose?.(
-      `Reporting ${users.length} contribution ${users.length > 1 ? 's' : ''} for document '${document.name}' in the past interval.`,
+      `Reporting ${users.length} contribution ${users.length > 1 ? 's' : ''} for document '${roomId}' in the past interval.`,
       LogContext.NORTH_STAR_METRIC
     );
 
-    this.northStarMetricService.reportMemoContributions(document.name, Array.from(users));
+    this.northStarMetricService.reportMemoContributions(roomId, Array.from(users));
   }
 }
