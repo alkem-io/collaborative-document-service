@@ -10,3 +10,5 @@ type ContextUnion = NorthStarMetricContext & AuthenticationContext;
  * Extensions should always check for the existence of a field before using it.
  */
 export type ConnectionContext = Partial<ContextUnion>;
+// export type WithConnectionContext = { context: ConnectionContext };
+export type WithConnectionContext<T> = Omit<T, 'context'> & { context: ConnectionContext };

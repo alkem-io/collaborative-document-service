@@ -13,15 +13,18 @@ import { ConfigType } from '@src/config';
 import { isAbortError } from '@common/util';
 import { LogContext } from '@common/enums';
 import { UserInfo } from '@src/services/integration/types';
-import { ConnectionContext } from '../connection.context';
+import { WithConnectionContext } from '../connection.context';
 import { NorthStarMetricService } from './north.star.metric.service';
-import { AbortError } from '@src/types';
 
 @Injectable()
 export class NorthStarMetric implements Extension {
   public readonly extensionName: string;
 
   private readonly trackerAbortControllers = new Map<string, AbortController>();
+  // keep track of users who have contributed in the past interval;
+  // this set MUST be cleared on each interval tick
+  private readonly contributionsInThePastInterval = new Map<string, UserInfo>();
+
   private readonly contributionWindowMs: number;
 
   constructor(
@@ -40,8 +43,13 @@ export class NorthStarMetric implements Extension {
     return Promise.resolve();
   }
   // update client context about the last time they have changed the document
-  onChange(data: onChangePayload): Promise<any> {
+  onChange(data: WithConnectionContext<onChangePayload>): Promise<any> {
     data.context.lastContributed = new Date().getTime();
+
+    if (data.context.userInfo) {
+      this.contributionsInThePastInterval.set(data.context.userInfo.id, data.context.userInfo);
+    }
+
     return Promise.resolve();
   }
   // stop the timer when the document is unloaded
@@ -68,7 +76,7 @@ export class NorthStarMetric implements Extension {
       for await (const tick of setInterval(this.contributionWindowMs, null, {
         signal: ac.signal,
       })) {
-        this.reportContributions(document, this.contributionWindowMs);
+        this.reportContributions(document);
       }
     } catch (e: any) {
       if (isAbortError(e)) {
@@ -83,6 +91,8 @@ export class NorthStarMetric implements Extension {
           LogContext.NORTH_STAR_METRIC
         );
       }
+    } finally {
+      this.contributionsInThePastInterval.clear();
     }
   }
 
@@ -94,33 +104,24 @@ export class NorthStarMetric implements Extension {
     }
   }
 
-  private reportContributions(document: Document, intervalSize: number) {
-    const end = new Date().getTime();
-    const start = end - intervalSize;
-
-    const users: Map<string, UserInfo> = new Map();
-    document.getConnections().forEach(connection => {
-      const { lastContributed, userInfo } = connection.context as ConnectionContext;
-
-      if (lastContributed && lastContributed >= start && lastContributed <= end) {
-        users.set(userInfo?.id ?? 'N/A', userInfo ?? { id: 'N/A', email: 'N/A' });
-
-        if (!userInfo) {
-          this.logger.warn(
-            'A user is eligible for contribution but has no userInfo',
-            LogContext.NORTH_STAR_METRIC
-          );
-        }
-      }
-    });
-
-    if (users.size === 0) {
+  private reportContributions(document: Document) {
+    if (this.contributionsInThePastInterval.size === 0) {
+      this.logger.verbose?.(
+        `No contributions to report for document '${document.name}' in the past interval. All Connections were read-only or idle.`,
+        LogContext.NORTH_STAR_METRIC
+      );
       return;
     }
 
-    return this.northStarMetricService.reportMemoContributions(
-      document.name,
-      Array.from(users.values())
+    const users = Array.from(this.contributionsInThePastInterval.values());
+
+    this.logger.verbose?.(
+      `Reporting ${users.length} contribution ${users.length > 1 ? 's' : ''} for document '${document.name}' in the past interval.`,
+      LogContext.NORTH_STAR_METRIC
     );
+
+    this.contributionsInThePastInterval.clear();
+
+    this.northStarMetricService.reportMemoContributions(document.name, Array.from(users));
   }
 }
