@@ -151,8 +151,8 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  public async reportMemoContributions(data: MemoContributionsInputData) {
-    return this.sendWithoutResponse(IntegrationEventPattern.MEMO_CONTRIBUTION, data);
+  public reportMemoContributions(data: MemoContributionsInputData) {
+    this.sendWithoutResponse(IntegrationEventPattern.MEMO_CONTRIBUTION, data);
   }
 
   /**

@@ -14,7 +14,8 @@ import { isAbortError } from '@common/util';
 import { LogContext } from '@common/enums';
 import { UserInfo } from '@src/services/integration/types';
 import { ConnectionContext } from '../connection.context';
-import { NorthStartMetricService } from './north.start.metric.service';
+import { NorthStarMetricService } from './north.star.metric.service';
+import { AbortError } from '@src/types';
 
 @Injectable()
 export class NorthStarMetric implements Extension {
@@ -26,7 +27,7 @@ export class NorthStarMetric implements Extension {
   constructor(
     @Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: WinstonLogger,
     private readonly configService: ConfigService<ConfigType, true>,
-    private readonly northStarMetricService: NorthStartMetricService
+    private readonly northStarMetricService: NorthStarMetricService
   ) {
     this.extensionName = NorthStarMetric.name;
     this.contributionWindowMs =
@@ -64,7 +65,7 @@ export class NorthStarMetric implements Extension {
     try {
       // the interval will throw if aborted
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      for await (const _ of setInterval(this.contributionWindowMs, null, {
+      for await (const tick of setInterval(this.contributionWindowMs, null, {
         signal: ac.signal,
       })) {
         this.reportContributions(document, this.contributionWindowMs);
@@ -97,12 +98,12 @@ export class NorthStarMetric implements Extension {
     const end = new Date().getTime();
     const start = end - intervalSize;
 
-    const users: UserInfo[] = [];
+    const users: Map<string, UserInfo> = new Map();
     document.getConnections().forEach(connection => {
       const { lastContributed, userInfo } = connection.context as ConnectionContext;
 
       if (lastContributed && lastContributed >= start && lastContributed <= end) {
-        users.push(userInfo ?? { id: 'N/A', email: 'N/A' });
+        users.set(userInfo?.id ?? 'N/A', userInfo ?? { id: 'N/A', email: 'N/A' });
 
         if (!userInfo) {
           this.logger.warn(
@@ -113,10 +114,13 @@ export class NorthStarMetric implements Extension {
       }
     });
 
-    if (users.length === 0) {
+    if (users.size === 0) {
       return;
     }
 
-    return this.northStarMetricService.reportMemoContributions(document.name, users);
+    return this.northStarMetricService.reportMemoContributions(
+      document.name,
+      Array.from(users.values())
+    );
   }
 }

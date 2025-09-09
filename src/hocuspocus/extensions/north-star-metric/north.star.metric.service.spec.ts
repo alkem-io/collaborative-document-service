@@ -1,16 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { NorthStartMetricService } from './north.start.metric.service';
+import { NorthStarMetricService } from './north.star.metric.service';
 
 describe('NorthStartMetricService', () => {
-  let service: NorthStartMetricService;
+  let service: NorthStarMetricService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [NorthStartMetricService],
-    }).compile();
+      providers: [NorthStarMetricService],
+    }).us.compile();
 
-    service = module.get<NorthStartMetricService>(NorthStartMetricService);
+    service = module.get<NorthStarMetricService>(NorthStarMetricService);
   });
 
   it('should be defined', () => {
