@@ -110,8 +110,6 @@ export class NorthStarMetric implements Extension {
         this.reportContributions(document);
       }
     } catch (e: any) {
-      this.contributionTrackers.delete(roomId);
-
       if (isAbortError(e)) {
         this.logger.verbose?.(
           `Contribution tracker for room '${roomId}' was aborted with reason '${e.cause}'`,
@@ -124,6 +122,8 @@ export class NorthStarMetric implements Extension {
           LogContext.NORTH_STAR_METRIC
         );
       }
+    } finally {
+      this.contributionTrackers.delete(roomId);
     }
   }
 
