@@ -1,6 +1,6 @@
 {
   "name": "collaborative-document-service",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Backend microservice, supporting real-time multi-user collaboration on a shared document.",
   "author": "Alkemio Foundation",
   "license": "EUPL-1.2",
