@@ -57,12 +57,7 @@ export class UtilService {
         error?.stack,
         LogContext.UTIL
       );
-      return {
-        read: false,
-        update: false,
-        isMultiUser: false,
-        maxCollaborators: 0,
-      };
+      return new InfoOutputData(false, false, false, 0);
     }
   }
 

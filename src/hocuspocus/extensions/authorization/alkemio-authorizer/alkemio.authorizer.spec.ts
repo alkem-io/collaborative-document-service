@@ -7,7 +7,7 @@ import { AlkemioAuthorizationService } from './alkemio.authorization.service';
 import { HocuspocusConnectionService } from '@src/hocuspocus/services';
 import { ForbiddenException } from '../../authentication/exceptions';
 import { AuthorizationResult } from '../types';
-import { Hocuspocus } from '@hocuspocus/server';
+import { Connection, Hocuspocus } from '@hocuspocus/server';
 
 describe('AlkemioAuthorizer', () => {
   let authorizer: AlkemioAuthorizer;
@@ -236,7 +236,7 @@ describe('AlkemioAuthorizer', () => {
       const mockConnections = [
         { id: 'conn1', user: 'user1', readOnly: false },
         { id: 'conn2', user: 'user2', readOnly: true },
-      ];
+      ] as unknown as Connection[];
 
       connectionService.getConnections.mockReturnValue(mockConnections);
       connectionService.getReadOnlyConnections.mockReturnValue([mockConnections[1]]);
