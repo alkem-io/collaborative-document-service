@@ -23,7 +23,10 @@ export class UtilService {
    * @throws NotProvidedException if neither is provided.
    * @param opts
    */
-  public getUserInfo(opts: { cookie?: string; authorization?: string }): Promise<UserInfo | never> {
+  public getUserInfo(opts: {
+    cookie?: string;
+    authorization?: string;
+  }): Promise<UserInfo | undefined> {
     const { cookie, authorization } = opts;
     // we want to choose the authorization with priority
     if (authorization) {
