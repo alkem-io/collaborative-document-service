@@ -6,13 +6,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IntegrationService } from './integration.service';
 import { NotInitializedException } from '@common/exceptions';
 import { IntegrationMessagePattern, RMQConnectionError } from './types';
-import { FetchInputData, SaveInputData, WhoInputData } from './inputs';
+import { FetchInputData, InfoInputData, SaveInputData, WhoInputData } from './inputs';
 import {
   FetchContentData,
   FetchErrorCodes,
   FetchErrorData,
   FetchOutputData,
   HealthCheckOutputData,
+  InfoOutputData,
   SaveContentData,
   SaveErrorData,
   SaveOutputData,
@@ -144,6 +145,17 @@ describe('IntegrationService', () => {
   });
 
   describe('isConnected', () => {
+    it('should return false when client is undefined', async () => {
+      // Arrange - simulate client not being initialized
+      (service as any).client = undefined;
+
+      // Act
+      const result = await service.isConnected();
+
+      // Assert
+      expect(result).toBe(false);
+    });
+
     it('should return true when health check succeeds', async () => {
       const healthResponse = new HealthCheckOutputData(true);
       mockSenderService.sendWithResponse.mockResolvedValue(healthResponse);
@@ -178,6 +190,17 @@ describe('IntegrationService', () => {
   });
 
   describe('who', () => {
+    it('should throw error when client is undefined', async () => {
+      // Arrange
+      (service as any).client = undefined;
+      const inputData = new WhoInputData({ authorization: 'Bearer token123' });
+
+      // Act & Assert
+      await expect(service.who(inputData)).rejects.toThrow(
+        'Connection was not established. Send failed.'
+      );
+    });
+
     it('should send who request and return user info', async () => {
       const inputData = new WhoInputData({ authorization: 'Bearer token123' });
       const expectedResponse = {
@@ -242,7 +265,76 @@ describe('IntegrationService', () => {
     });
   });
 
+  describe('info', () => {
+    it('should throw error when client is undefined', async () => {
+      // Arrange
+      (service as any).client = undefined;
+      const inputData = new InfoInputData('user1', 'docId123');
+
+      // Act & Assert
+      await expect(service.info(inputData)).rejects.toThrow(
+        'Connection was not established. Send failed.'
+      );
+    });
+
+    it('should return info data when request succeeds', async () => {
+      // Arrange
+      const inputData = new InfoInputData('user2', 'docId123');
+      const expectedResponse = new InfoOutputData(true, true, false, 5);
+      mockSenderService.sendWithResponse.mockResolvedValue(expectedResponse);
+
+      // Act
+      const result = await service.info(inputData);
+
+      // Assert
+      expect(result).toEqual(expectedResponse);
+      expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
+        mockClientProxy,
+        IntegrationMessagePattern.INFO,
+        inputData,
+        (service as any).defaultRequestConfig
+      );
+    });
+
+    it('should return default InfoOutputData when request fails and log error', async () => {
+      // Arrange
+      const inputData = new InfoInputData('user3', 'docId123');
+      const error = new Error('Info request failed');
+      mockSenderService.sendWithResponse.mockRejectedValue(error);
+
+      // Act
+      const result = await service.info(inputData);
+
+      // Assert
+      expect(result).toEqual(new InfoOutputData(false, false, false, 0));
+    });
+
+    it('should handle errors without message property', async () => {
+      // Arrange
+      const inputData = new InfoInputData('user4', 'docId123');
+      const error = { code: 'CUSTOM_ERROR', details: 'Something went wrong' };
+      mockSenderService.sendWithResponse.mockRejectedValue(error);
+
+      // Act
+      const result = await service.info(inputData);
+
+      // Assert
+      expect(result).toEqual(new InfoOutputData(false, false, false, 0));
+    });
+  });
+
   describe('fetch', () => {
+    it('should throw error when client is undefined', async () => {
+      // Arrange
+      (service as any).client = undefined;
+      const inputData = new FetchInputData('docId123');
+
+      // Act & Assert
+      await expect(service.fetch(inputData)).rejects.toThrow(
+        'Connection was not established. Send failed.'
+      );
+    });
+
     it('should fetch document successfully', async () => {
       const inputData = new FetchInputData('docId123');
       const expectedResponse = new FetchOutputData(
@@ -295,9 +387,36 @@ describe('IntegrationService', () => {
       // assert
       expect(result).toEqual(expectedResult);
     });
+
+    it('should handle errors without message property', async () => {
+      // Arrange
+      const inputData = new FetchInputData('docId123');
+      const error = { code: 'CUSTOM_ERROR', details: 'Something went wrong' };
+      const expectedResult = new FetchOutputData(
+        new FetchErrorData(JSON.stringify(error), FetchErrorCodes.INTERNAL_ERROR)
+      );
+      mockSenderService.sendWithResponse.mockRejectedValue(error);
+
+      // Act
+      const result = await service.fetch(inputData);
+
+      // Assert
+      expect(result).toEqual(expectedResult);
+    });
   });
 
   describe('save', () => {
+    it('should throw error when client is undefined', async () => {
+      // Arrange
+      (service as any).client = undefined;
+      const inputData = new SaveInputData('docId123', 'binary state in base64 here');
+
+      // Act & Assert
+      await expect(service.save(inputData)).rejects.toThrow(
+        'Connection was not established. Send failed.'
+      );
+    });
+
     it('should save document successfully', async () => {
       const inputData = new SaveInputData('docId234', 'binary state in base64 here');
       const expectedResponse = new SaveOutputData(new SaveContentData());
@@ -341,6 +460,27 @@ describe('IntegrationService', () => {
 
       const result = await service.save(inputData);
 
+      expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
+        mockClientProxy,
+        IntegrationMessagePattern.SAVE,
+        inputData,
+        (service as any).defaultRequestConfig
+      );
+      expect(result).toEqual(expectedResponse);
+    });
+
+    it('should handle errors without message property', async () => {
+      // Arrange
+      const inputData = new SaveInputData('docId345', 'binary state in base64 here');
+      const error = { code: 'CUSTOM_ERROR', details: 'Something went wrong' };
+      const expectedResponse = new SaveOutputData(new SaveErrorData(JSON.stringify(error)));
+
+      mockSenderService.sendWithResponse.mockRejectedValue(error);
+
+      // Act
+      const result = await service.save(inputData);
+
+      // Assert
       expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
         mockClientProxy,
         IntegrationMessagePattern.SAVE,
