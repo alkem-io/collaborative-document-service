@@ -5,12 +5,7 @@ import { mock, MockProxy } from 'vitest-mock-extended';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IntegrationService } from './integration.service';
 import { NotInitializedException } from '@common/exceptions';
-import {
-  IntegrationMessagePattern,
-  RetryException,
-  RMQConnectionError,
-  TimeoutException,
-} from './types';
+import { IntegrationMessagePattern, RMQConnectionError } from './types';
 import { FetchInputData, SaveInputData, WhoInputData } from './inputs';
 import {
   FetchContentData,
@@ -213,6 +208,38 @@ describe('IntegrationService', () => {
 
       expect(result).toBeUndefined();
     });
+
+    it('should handle remote errors', async () => {
+      // arrange
+      const inputData = new WhoInputData({ authorization: 'Bearer token123' });
+      const errorResponse = { error: 'some remote error' };
+      mockSenderService.sendWithResponse.mockResolvedValue(errorResponse as any);
+
+      // act
+      const result = await service.who(inputData);
+
+      // assert
+      expect(result).toEqual(errorResponse);
+      expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
+        mockClientProxy,
+        IntegrationMessagePattern.WHO,
+        inputData,
+        (service as any).defaultRequestConfig
+      );
+    });
+
+    it('should handle internal error', async () => {
+      // arrange
+      const inputData = new WhoInputData({ authorization: 'Bearer token123' });
+      const error = new Error('Some internal error');
+      mockSenderService.sendWithResponse.mockRejectedValue(error);
+
+      // act
+      const result = await service.who(inputData);
+
+      // assert
+      expect(result).toBeUndefined();
+    });
   });
 
   describe('fetch', () => {
@@ -226,6 +253,27 @@ describe('IntegrationService', () => {
 
       const result = await service.fetch(inputData);
 
+      expect(result).toEqual(expectedResponse);
+      expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
+        mockClientProxy,
+        IntegrationMessagePattern.FETCH,
+        inputData,
+        (service as any).defaultRequestConfig
+      );
+    });
+
+    it('should handle remote fetch errors', async () => {
+      // arrange
+      const inputData = new FetchInputData('docId123');
+      const expectedResponse = new FetchOutputData(
+        new FetchErrorData('remote fetch error', FetchErrorCodes.INTERNAL_ERROR)
+      );
+      mockSenderService.sendWithResponse.mockResolvedValue(expectedResponse as any);
+
+      // act
+      const result = await service.fetch(inputData);
+
+      // assert
       expect(result).toEqual(expectedResponse);
       expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
         mockClientProxy,
