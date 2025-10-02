@@ -5,6 +5,7 @@ import { firstValueFrom, timer } from 'rxjs';
 import { catchError, retry, timeout, timeInterval, map } from 'rxjs/operators';
 import { LogContext } from '@common/enums';
 import {
+  IntegrationEventPattern,
   IntegrationMessagePattern,
   RetryException,
   RMQConnectionError,
@@ -177,5 +178,23 @@ export class SenderService {
     );
 
     return firstValueFrom(result$);
+  };
+
+  /**
+   * Sends a message to the queue without waiting for a response.
+   * Each consumer needs to manually handle failures, returning the proper type.
+   */
+  public sendWithoutResponse = <TInput>(
+    client: ClientProxy,
+    pattern: IntegrationEventPattern,
+    data: TInput
+  ): void => {
+    this.logger.debug?.({
+      method: 'sendWithoutResponse',
+      pattern,
+      data,
+    });
+
+    client.emit<void, TInput>(pattern, data);
   };
 }

@@ -14,6 +14,8 @@ import {
   ALKEMIO_STORAGE_EXTENSION,
   AlkemioStorage,
 } from '@src/hocuspocus/extensions/storage/alkemio-storage';
+import { NORTH_STAR_METRIC_EXTENSION } from '@src/hocuspocus/extensions/north-star-metric';
+import { NorthStarMetric } from '@src/hocuspocus/extensions/north-star-metric/north.star.metric.extension';
 
 @Injectable()
 export class HocuspocusServer implements OnModuleInit, OnModuleDestroy {
@@ -23,9 +25,10 @@ export class HocuspocusServer implements OnModuleInit, OnModuleDestroy {
     private readonly config: ConfigService<ConfigType, true>,
     @Inject(ALKEMIO_AUTHENTICATION_EXTENSION) Authentication: AlkemioAuthenticator,
     @Inject(ALKEMIO_AUTHORIZATION_EXTENSION) Authorization: AlkemioAuthorizer,
-    @Inject(ALKEMIO_STORAGE_EXTENSION) Storage: AlkemioStorage
+    @Inject(ALKEMIO_STORAGE_EXTENSION) Storage: AlkemioStorage,
+    @Inject(NORTH_STAR_METRIC_EXTENSION) NorthStarMetric: NorthStarMetric
   ) {
-    const extensions = sortExtensions([Authentication, Authorization, Storage]);
+    const extensions = sortExtensions([Authentication, Authorization, Storage, NorthStarMetric]);
     this.hocuspocusServer = new Server({
       extensions,
     });

@@ -5,14 +5,19 @@ import { ConfigService } from '@nestjs/config';
 import { LogContext } from '@common/enums';
 import { ConfigType } from '@src/config';
 import { NotInitializedException } from '@common/exceptions';
-import { IntegrationMessagePattern, RMQConnectionError, UserInfo } from './types';
-import { HealthCheckOutputData } from './outputs';
+import {
+  IntegrationEventPattern,
+  IntegrationMessagePattern,
+  RMQConnectionError,
+  UserInfo,
+} from './types';
 import {
   FetchInputData,
   InfoInputData,
   SaveInputData,
   WhoInputData,
-} from '@src/services/integration/inputs';
+  MemoContributionsInputData,
+} from './inputs';
 import {
   FetchErrorCodes,
   FetchErrorData,
@@ -20,6 +25,7 @@ import {
   InfoOutputData,
   SaveErrorData,
   SaveOutputData,
+  HealthCheckOutputData,
 } from './outputs';
 import { clientProxyFactory } from './client-proxy.factory';
 import { SenderService } from './sender.service';
@@ -201,5 +207,17 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
         new FetchErrorData(e?.message ?? JSON.stringify(e), FetchErrorCodes.INTERNAL_ERROR)
       );
     }
+  }
+
+  public reportMemoContributions(data: MemoContributionsInputData) {
+    if (!this.client) {
+      throw new Error('Connection was not established. Send failed.');
+    }
+
+    this.senderService.sendWithoutResponse(
+      this.client,
+      IntegrationEventPattern.MEMO_CONTRIBUTION,
+      data
+    );
   }
 }

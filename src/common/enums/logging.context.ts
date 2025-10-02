@@ -6,4 +6,5 @@ export enum LogContext {
   STORAGE = 'storage',
   HEALTH = 'health',
   FILTERS = 'filters',
+  NORTH_STAR_METRIC = 'north-star-metric',
 }
