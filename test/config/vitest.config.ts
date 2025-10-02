@@ -1,10 +1,7 @@
-import swc from 'unplugin-swc';
 import { defineConfig, coverageConfigDefaults } from 'vitest/config';
-import tsconfigPaths from 'vite-tsconfig-paths';
 import path from 'path';
 
 export default defineConfig({
-  plugins: [tsconfigPaths(), swc.vite()],
   resolve: {
     alias: {
       '@src': path.resolve(__dirname, '../../src'),
