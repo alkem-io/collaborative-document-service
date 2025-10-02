@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { WinstonLogger } from 'nest-winston';
+import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
 import { firstValueFrom, timer } from 'rxjs';
 import { catchError, retry, timeout, timeInterval, map } from 'rxjs/operators';
 import { LogContext } from '@common/enums';
@@ -18,7 +18,7 @@ export interface SendOptions {
 
 @Injectable()
 export class SenderService {
-  constructor(private readonly logger: WinstonLogger) {}
+  constructor(@Inject(WINSTON_MODULE_NEST_PROVIDER) private logger: WinstonLogger) {}
 
   /**
    * Sends a message to the queue and waits for a response.
