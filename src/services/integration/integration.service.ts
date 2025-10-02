@@ -27,7 +27,7 @@ import { SenderService } from './sender.service';
 @Injectable()
 export class IntegrationService implements OnModuleInit, OnModuleDestroy {
   private client: ClientProxy | undefined;
-  private defaultRequestConfig: { timeoutMs: number; maxRetries: number };
+  private readonly defaultRequestConfig: { timeoutMs: number; maxRetries: number };
 
   constructor(
     @Inject(WINSTON_MODULE_NEST_PROVIDER) private logger: WinstonLogger,

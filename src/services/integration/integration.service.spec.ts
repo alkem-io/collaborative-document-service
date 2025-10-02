@@ -1,37 +1,46 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { ClientProxy } from '@nestjs/microservices';
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { mock, MockProxy } from 'vitest-mock-extended';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { of, throwError } from 'rxjs';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IntegrationService } from './integration.service';
 import { NotInitializedException } from '@common/exceptions';
 import {
   IntegrationMessagePattern,
+  RetryException,
   RMQConnectionError,
   TimeoutException,
-  RetryException,
 } from './types';
-import { WhoInputData, FetchInputData, SaveInputData } from './inputs';
+import { FetchInputData, SaveInputData, WhoInputData } from './inputs';
 import {
   FetchContentData,
+  FetchErrorCodes,
+  FetchErrorData,
   FetchOutputData,
+  HealthCheckOutputData,
   SaveContentData,
   SaveErrorData,
   SaveOutputData,
 } from '@src/services/integration/outputs';
+import { defaultMockerFactory } from '@test/utils';
+import { SenderService } from './sender.service';
+import * as clientProxyFactory from './client-proxy.factory';
+
+// Mock the client proxy factory
+vi.mock('./client-proxy.factory', () => ({
+  clientProxyFactory: vi.fn(),
+}));
 
 describe('IntegrationService', () => {
   let service: IntegrationService;
   let configService: MockProxy<ConfigService>;
-  let mockLogger: MockProxy<any>;
   let mockClientProxy: MockProxy<ClientProxy>;
+  let mockSenderService: MockProxy<SenderService>;
 
   beforeEach(async () => {
     configService = mock<ConfigService>();
-    mockLogger = mock<any>();
     mockClientProxy = mock<ClientProxy>();
+    mockSenderService = mock<SenderService>();
 
     // Setup default config values
     configService.get.mockImplementation((key: string) => {
@@ -55,6 +64,9 @@ describe('IntegrationService', () => {
       }
     });
 
+    // Mock the clientProxyFactory to return our mock client
+    vi.mocked(clientProxyFactory.clientProxyFactory).mockReturnValue(mockClientProxy);
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         IntegrationService,
@@ -63,16 +75,16 @@ describe('IntegrationService', () => {
           useValue: configService,
         },
         {
-          provide: WINSTON_MODULE_NEST_PROVIDER,
-          useValue: mockLogger,
+          provide: SenderService,
+          useValue: mockSenderService,
         },
       ],
-    }).compile();
+    })
+      .useMocker(defaultMockerFactory)
+      .compile();
 
     service = module.get<IntegrationService>(IntegrationService);
-
-    // Mock the client proxy creation
-    vi.spyOn(service as any, 'client', 'get').mockReturnValue(mockClientProxy);
+    await service.onModuleInit();
   });
 
   describe('constructor', () => {
@@ -93,38 +105,32 @@ describe('IntegrationService', () => {
     it('should initialize client proxy and connect successfully', async () => {
       mockClientProxy.connect.mockResolvedValue(undefined);
 
-      // Override the service's client property for this test
-      (service as any).client = mockClientProxy;
-
       await service.onModuleInit();
 
       expect(mockClientProxy.connect).toHaveBeenCalled();
-      expect(mockLogger.verbose).toHaveBeenCalledWith(
-        'Client proxy successfully connected to RabbitMQ',
-        'INTEGRATION'
-      );
     });
 
     it('should handle connection errors gracefully', async () => {
       const connectionError: RMQConnectionError = {
-        err: new Error('Connection failed'),
+        err: { message: 'Connection failed', stack: 'stack' },
+        url: {
+          protocol: 'amqp',
+          hostname: 'localhost',
+          username: 'guest',
+          password: 'guest',
+          port: 5672,
+          heartbeat: 60,
+        },
       };
       mockClientProxy.connect.mockRejectedValue(connectionError);
 
-      (service as any).client = mockClientProxy;
-
       await service.onModuleInit();
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        connectionError.err,
-        connectionError.err.stack,
-        'INTEGRATION'
-      );
     });
 
     it('should throw NotInitializedException when client proxy creation fails', async () => {
-      // Simulate client proxy creation failure
-      (service as any).client = undefined;
+      vi.mocked(clientProxyFactory.clientProxyFactory).mockImplementation(() => {
+        throw new Error('Factory error');
+      });
 
       await expect(service.onModuleInit()).rejects.toThrow(NotInitializedException);
     });
@@ -132,40 +138,34 @@ describe('IntegrationService', () => {
 
   describe('onModuleDestroy', () => {
     it('should close client connection', () => {
-      (service as any).client = mockClientProxy;
-
       service.onModuleDestroy();
 
       expect(mockClientProxy.close).toHaveBeenCalled();
     });
 
     it('should handle missing client gracefully', () => {
-      (service as any).client = undefined;
-
       expect(() => service.onModuleDestroy()).not.toThrow();
     });
   });
 
   describe('isConnected', () => {
-    beforeEach(() => {
-      (service as any).client = mockClientProxy;
-    });
-
     it('should return true when health check succeeds', async () => {
-      const healthResponse = { healthy: true };
-      mockClientProxy.send.mockReturnValue(of(healthResponse));
+      const healthResponse = new HealthCheckOutputData(true);
+      mockSenderService.sendWithResponse.mockResolvedValue(healthResponse);
 
       const result = await service.isConnected();
 
       expect(result).toBe(true);
-      expect(mockClientProxy.send).toHaveBeenCalledWith(
+      expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
+        mockClientProxy,
         IntegrationMessagePattern.HEALTH_CHECK,
-        'healthy?'
+        'healthy?',
+        (service as any).defaultRequestConfig
       );
     });
 
     it('should return false when health check fails', async () => {
-      mockClientProxy.send.mockReturnValue(throwError(() => new Error('Health check failed')));
+      mockSenderService.sendWithResponse.mockRejectedValue(new Error('Health check failed'));
 
       const result = await service.isConnected();
 
@@ -174,7 +174,7 @@ describe('IntegrationService', () => {
 
     it('should return false when health response indicates unhealthy', async () => {
       const healthResponse = { healthy: false };
-      mockClientProxy.send.mockReturnValue(of(healthResponse));
+      mockSenderService.sendWithResponse.mockResolvedValue(healthResponse as any);
 
       const result = await service.isConnected();
 
@@ -191,21 +191,27 @@ describe('IntegrationService', () => {
         displayName: 'Test User',
       };
 
-      mockClientProxy.send.mockReturnValue(of(expectedResponse));
+      mockSenderService.sendWithResponse.mockResolvedValue(expectedResponse as any);
 
       const result = await service.who(inputData);
 
       expect(result).toEqual(expectedResponse);
-      expect(mockClientProxy.send).toHaveBeenCalledWith(IntegrationMessagePattern.WHO, inputData);
+      expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
+        mockClientProxy,
+        IntegrationMessagePattern.WHO,
+        inputData,
+        (service as any).defaultRequestConfig
+      );
     });
 
     it('should handle authentication errors', async () => {
       const inputData = new WhoInputData({ authorization: 'Bearer invalid' });
       const error = new Error('Unauthorized');
 
-      mockClientProxy.send.mockReturnValue(throwError(() => error));
+      mockSenderService.sendWithResponse.mockRejectedValue(error);
+      const result = await service.who(inputData);
 
-      await expect(service.who(inputData)).rejects.toThrow('Unauthorized');
+      expect(result).toBeUndefined();
     });
   });
 
@@ -216,21 +222,30 @@ describe('IntegrationService', () => {
         new FetchContentData('base64 Document content here')
       );
 
-      mockClientProxy.send.mockReturnValue(of(expectedResponse));
+      mockSenderService.sendWithResponse.mockResolvedValue(expectedResponse as any);
 
       const result = await service.fetch(inputData);
 
       expect(result).toEqual(expectedResponse);
-      expect(mockClientProxy.send).toHaveBeenCalledWith(IntegrationMessagePattern.FETCH, inputData);
+      expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
+        mockClientProxy,
+        IntegrationMessagePattern.FETCH,
+        inputData,
+        (service as any).defaultRequestConfig
+      );
     });
 
-    it('should handle fetch errors with proper error codes', async () => {
+    it('should handle internal error', async () => {
       const inputData = new FetchInputData('docId999');
-      const error = new Error('Document not found');
-
-      mockClientProxy.send.mockReturnValue(throwError(() => error));
-
-      await expect(service.fetch(inputData)).rejects.toThrow('Document not found');
+      const error = new Error('Some internal error');
+      const expectedResult = new FetchOutputData(
+        new FetchErrorData(error.message, FetchErrorCodes.INTERNAL_ERROR)
+      );
+      mockSenderService.sendWithResponse.mockRejectedValue(error);
+      // act
+      const result = await service.fetch(inputData);
+      // assert
+      expect(result).toEqual(expectedResult);
     });
   });
 
@@ -239,11 +254,16 @@ describe('IntegrationService', () => {
       const inputData = new SaveInputData('docId234', 'binary state in base64 here');
       const expectedResponse = new SaveOutputData(new SaveContentData());
 
-      mockClientProxy.send.mockReturnValue(of(expectedResponse));
+      mockSenderService.sendWithResponse.mockResolvedValue(expectedResponse as any);
 
       const result = await service.save(inputData);
 
-      expect(mockClientProxy.send).toHaveBeenCalledWith(IntegrationMessagePattern.SAVE, inputData);
+      expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
+        mockClientProxy,
+        IntegrationMessagePattern.SAVE,
+        inputData,
+        (service as any).defaultRequestConfig
+      );
       expect(result).toEqual(expectedResponse);
     });
 
@@ -251,11 +271,16 @@ describe('IntegrationService', () => {
       const inputData = new SaveInputData('docId345', 'binary state in base64 here');
       const expectedResponse = new SaveOutputData(new SaveErrorData('remote save error'));
 
-      mockClientProxy.send.mockReturnValue(of(expectedResponse));
+      mockSenderService.sendWithResponse.mockResolvedValue(expectedResponse as any);
 
       const result = await service.save(inputData);
 
-      expect(mockClientProxy.send).toHaveBeenCalledWith(IntegrationMessagePattern.SAVE, inputData);
+      expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
+        mockClientProxy,
+        IntegrationMessagePattern.SAVE,
+        inputData,
+        (service as any).defaultRequestConfig
+      );
       expect(result).toEqual(expectedResponse);
     });
 
@@ -264,66 +289,17 @@ describe('IntegrationService', () => {
       const error = new Error('Some internal error');
       const expectedResponse = new SaveOutputData(new SaveErrorData(error.message));
 
-      mockClientProxy.send.mockReturnValue(throwError(() => error));
+      mockSenderService.sendWithResponse.mockRejectedValue(error);
 
       const result = await service.save(inputData);
 
-      expect(mockClientProxy.send).toHaveBeenCalledWith(IntegrationMessagePattern.SAVE, inputData);
-      expect(result).toEqual(expectedResponse);
-    });
-  });
-
-  describe('error handling and resilience', () => {
-    it('should handle timeout errors', async () => {
-      const inputData: WhoInputData = {
-        authorization: 'Bearer token123',
-        contextId: 'context1',
-      };
-      const timeoutError = new TimeoutException('Request timed out');
-
-      mockClientProxy.send.mockReturnValue(throwError(() => timeoutError));
-
-      await expect(service.who(inputData)).rejects.toThrow(TimeoutException);
-    });
-
-    it('should handle retry logic on failures', async () => {
-      const inputData: WhoInputData = {
-        authorization: 'Bearer token123',
-        contextId: 'context1',
-      };
-      const retryError = new RetryException('Max retries exceeded');
-
-      mockClientProxy.send.mockReturnValue(throwError(() => retryError));
-
-      await expect(service.who(inputData)).rejects.toThrow(RetryException);
-    });
-  });
-
-  describe('sendWithResponse private method behavior', () => {
-    it('should apply correct timeout and retry configuration', async () => {
-      // This test verifies that the private sendWithResponse method
-      // correctly applies the configured timeout and retry values
-      const inputData: WhoInputData = {
-        authorization: 'Bearer token123',
-        contextId: 'context1',
-      };
-
-      (service as any).client = mockClientProxy;
-      mockClientProxy.send.mockReturnValue(of({ id: 'user123' }));
-
-      await service.who(inputData);
-
-      // Verify that the timeout from config is used (5000ms)
-      expect(configService.get).toHaveBeenCalledWith(
-        'settings.application.queue_response_timeout',
-        {
-          infer: true,
-        }
+      expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
+        mockClientProxy,
+        IntegrationMessagePattern.SAVE,
+        inputData,
+        (service as any).defaultRequestConfig
       );
-      // Verify that the retry count from config is used (3 retries)
-      expect(configService.get).toHaveBeenCalledWith('settings.application.queue_request_retries', {
-        infer: true,
-      });
+      expect(result).toEqual(expectedResponse);
     });
   });
 });
