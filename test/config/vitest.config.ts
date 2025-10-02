@@ -1,7 +1,11 @@
+import swc from 'unplugin-swc';
+
 import { defineConfig, coverageConfigDefaults } from 'vitest/config';
 import path from 'path';
+import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
+  plugins: [tsconfigPaths(), swc.vite()],
   resolve: {
     alias: {
       '@src': path.resolve(__dirname, '../../src'),
@@ -13,6 +17,8 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     include: ['src/**/*.spec.ts'],
+    testTimeout: 1_000,
+    hookTimeout: 1_000,
     coverage: {
       provider: 'v8', // or 'istanbul'
       reportsDirectory: './coverage',

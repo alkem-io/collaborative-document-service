@@ -1,9 +1,8 @@
 import { vi } from 'vitest';
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
-import { LoggerService, ValueProvider } from '@nestjs/common';
-import { PublicPart } from '../utils/public-part';
+import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
+import { MockValueProvider } from "@test/utils";
 
-export const MockWinstonProvider: ValueProvider<PublicPart<LoggerService>> = {
+export const MockWinstonProvider: MockValueProvider<WinstonLogger> = {
   provide: WINSTON_MODULE_NEST_PROVIDER,
   useValue: {
     error: vi.fn(),

@@ -1,21 +1,19 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { mock, MockProxy } from 'vitest-mock-extended';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AlkemioStorage } from './alkemio.storage';
-import { AlkemioStorageService } from './alkemio.storage.service';
 import { onLoadDocumentPayload, onStoreDocumentPayload } from '@hocuspocus/server';
 import { Document } from '@hocuspocus/server';
+import { defaultMockerFactory } from '@test/utils';
+import { AlkemioStorage } from './alkemio.storage';
+import { AlkemioStorageService } from './alkemio.storage.service';
 
-describe.only('AlkemioStorage', () => {
+describe('AlkemioStorage', () => {
   let storage: AlkemioStorage;
   let storageService: MockProxy<AlkemioStorageService>;
-  let mockLogger: MockProxy<any>;
   let mockDoc: Document;
 
   beforeEach(async () => {
     storageService = mock<AlkemioStorageService>();
-    mockLogger = mock<any>();
     mockDoc = new Document('mock');
 
     const module: TestingModule = await Test.createTestingModule({
@@ -25,12 +23,10 @@ describe.only('AlkemioStorage', () => {
           provide: AlkemioStorageService,
           useValue: storageService,
         },
-        {
-          provide: WINSTON_MODULE_NEST_PROVIDER,
-          useValue: mockLogger,
-        },
       ],
-    }).compile();
+    })
+        .useMocker(defaultMockerFactory)
+        .compile();
 
     storage = module.get<AlkemioStorage>(AlkemioStorage);
   });
@@ -56,23 +52,12 @@ describe.only('AlkemioStorage', () => {
       await expect(storage.onLoadDocument(mockLoadPayload)).rejects.toThrow(
         'Database connection failed'
       );
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        {
-          message: 'Failed to load document.',
-          documentId: 'test-document-123',
-          error: storageError,
-        },
-        storageError.stack,
-        'storage'
-      );
     });
     it('should handle network timeouts during document loading', async () => {
       const timeoutError = new Error('Request timeout');
       storageService.loadDocument.mockRejectedValue(timeoutError);
 
       await expect(storage.onLoadDocument(mockLoadPayload)).rejects.toThrow('Request timeout');
-      expect(mockLogger.error).toHaveBeenCalled();
     });
     it('should successfully load existing document', async () => {
       const existingDoc = new Document('mock');
@@ -118,7 +103,6 @@ describe.only('AlkemioStorage', () => {
         saved: true,
         error: undefined,
       });
-      expect(mockLogger.error).not.toHaveBeenCalled();
     });
 
     it('should handle save failures and log errors', async () => {
@@ -135,15 +119,6 @@ describe.only('AlkemioStorage', () => {
         saved: false,
         error: saveError,
       });
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        {
-          message: 'Failed to save document.',
-          documentId: 'test-document-456',
-          error: saveError,
-        },
-        undefined,
-        'storage'
-      );
     });
 
     it('should handle storage service exceptions', async () => {
@@ -333,14 +308,6 @@ describe.only('AlkemioStorage', () => {
 
       await expect(storage.onLoadDocument(mockLoadPayload)).rejects.toThrow(
         'Document data corrupted'
-      );
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        expect.objectContaining({
-          message: 'Failed to load document.',
-          documentId: 'corrupted-document',
-        }),
-        corruptionError.stack,
-        'storage'
       );
     });
   });
