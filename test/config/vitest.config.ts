@@ -36,6 +36,9 @@ export default defineConfig({
         //
         'src/types/**',
         'src/**/types/**',
+        'src/**/*.type.ts',
+        //
+        'src/**/*.injection.token.ts',
         //
         'src/constants/**',
         'src/**/constants/**',
