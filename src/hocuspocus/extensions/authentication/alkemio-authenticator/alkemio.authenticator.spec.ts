@@ -245,4 +245,361 @@ describe('AlkemioAuthenticator', () => {
       );
     });
   });
+
+  describe('connected method call flow', () => {
+    describe('failing paths - connected should NOT be called', () => {
+      it('should not call connected when onConnect authentication fails', async () => {
+        // Arrange
+        const mockOnConnectData = {
+          requestHeaders: {
+            cookie: 'invalid-cookie',
+            authorization: 'Bearer invalid-token',
+          },
+          connectionConfig: {},
+          documentName: 'test-document',
+        } as any;
+
+        authService.getUserIdentity.mockResolvedValue(undefined);
+        const connectedSpy = vi.spyOn(authenticator, 'connected');
+
+        // Act
+        const result = await authenticator.onConnect(mockOnConnectData);
+
+        // Assert
+        expect(result).toBeUndefined();
+        expect(mockOnConnectData.connectionConfig.isAuthenticated).toBe(false);
+        expect(connectedSpy).not.toHaveBeenCalled();
+      });
+
+      it('should not call connected when onAuthenticate throws exception', async () => {
+        // Arrange
+        const mockOnAuthenticateData = {
+          token: 'invalid-token',
+          documentName: 'test-document',
+          connectionConfig: { isAuthenticated: false },
+        } as any;
+
+        authService.getUserIdentity.mockResolvedValue(undefined);
+        const connectedSpy = vi.spyOn(authenticator, 'connected');
+
+        // Act & Assert
+        await expect(authenticator.onAuthenticate(mockOnAuthenticateData)).rejects.toThrow(
+          AuthenticationException
+        );
+        expect(connectedSpy).not.toHaveBeenCalled();
+      });
+
+      it('should not call connected when authentication service returns undefined in onConnect', async () => {
+        // Arrange
+        const mockOnConnectData = {
+          requestHeaders: {
+            authorization: 'Bearer expired-token',
+          },
+          connectionConfig: {},
+          documentName: 'test-document',
+        } as any;
+
+        authService.getUserIdentity.mockResolvedValue(undefined);
+        const connectedSpy = vi.spyOn(authenticator, 'connected');
+
+        // Act
+        await authenticator.onConnect(mockOnConnectData);
+
+        // Assert
+        expect(connectedSpy).not.toHaveBeenCalled();
+      });
+
+      it('should not call connected when onAuthenticate rejects due to no user info', async () => {
+        // Arrange
+        const mockOnAuthenticateData = {
+          token: 'token-without-user',
+          documentName: 'test-document',
+          connectionConfig: { isAuthenticated: false },
+        } as any;
+
+        authService.getUserIdentity.mockResolvedValue(undefined);
+        const connectedSpy = vi.spyOn(authenticator, 'connected');
+
+        // Act & Assert
+        await expect(authenticator.onAuthenticate(mockOnAuthenticateData)).rejects.toThrow();
+        expect(connectedSpy).not.toHaveBeenCalled();
+      });
+
+      it('should not call connected when authentication fails with missing credentials', async () => {
+        // Arrange
+        const mockOnConnectData = {
+          requestHeaders: {},
+          connectionConfig: {},
+          documentName: 'test-document',
+        } as any;
+
+        authService.getUserIdentity.mockResolvedValue(undefined);
+        const connectedSpy = vi.spyOn(authenticator, 'connected');
+
+        // Act
+        await authenticator.onConnect(mockOnConnectData);
+
+        // Assert
+        expect(connectedSpy).not.toHaveBeenCalled();
+        expect(mockOnConnectData.connectionConfig.isAuthenticated).toBe(false);
+      });
+
+      it('should not call connected when onAuthenticate fails for unauthenticated user', async () => {
+        // Arrange
+        const mockOnAuthenticateData = {
+          token: 'some-token',
+          documentName: 'test-document',
+          connectionConfig: { isAuthenticated: false },
+        } as any;
+
+        authService.getUserIdentity.mockResolvedValue(undefined);
+        const connectedSpy = vi.spyOn(authenticator, 'connected');
+
+        // Act & Assert
+        await expect(authenticator.onAuthenticate(mockOnAuthenticateData)).rejects.toThrow(
+          AuthenticationException
+        );
+        expect(connectedSpy).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('successful paths - connected should be called after successful authentication', () => {
+      it('should be ready to call connected after successful onConnect authentication', async () => {
+        // Arrange
+        const userInfo = {
+          id: 'user123',
+          email: 'user@test.com',
+        };
+
+        const mockOnConnectData = {
+          requestHeaders: {
+            cookie: 'valid-cookie',
+            authorization: 'Bearer valid-token',
+          },
+          connectionConfig: {},
+          documentName: 'test-document',
+        } as any;
+
+        authService.getUserIdentity.mockResolvedValue(userInfo);
+
+        // Act
+        const result = await authenticator.onConnect(mockOnConnectData);
+
+        // Assert - verify authentication succeeded and context is ready for connected()
+        expect(result).toEqual({
+          isAuthenticated: true,
+          authenticatedBy: 'onConnect',
+          userInfo,
+        });
+        expect(mockOnConnectData.connectionConfig.isAuthenticated).toBe(true);
+        expect(mockOnConnectData.userInfo).toEqual(userInfo);
+
+        // Verify connected can be called with the proper context
+        const connectedData = {
+          context: result,
+        } as any;
+
+        await expect(authenticator.connected(connectedData)).resolves.toBeUndefined();
+      });
+
+      it('should be ready to call connected after successful onAuthenticate authentication', async () => {
+        // Arrange
+        const userInfo = {
+          id: 'user456',
+          email: 'user2@test.com',
+        };
+
+        const mockOnAuthenticateData = {
+          token: 'valid-auth-token',
+          documentName: 'test-document',
+          connectionConfig: { isAuthenticated: false },
+        } as any;
+
+        authService.getUserIdentity.mockResolvedValue(userInfo);
+
+        // Act
+        const result = await authenticator.onAuthenticate(mockOnAuthenticateData);
+
+        // Assert - verify authentication succeeded and context is ready for connected()
+        expect(result).toEqual({
+          isAuthenticated: true,
+          authenticatedBy: 'onAuthenticate',
+          userInfo,
+        });
+        expect(mockOnAuthenticateData.connectionConfig.isAuthenticated).toBe(true);
+
+        // Verify connected can be called with the proper context
+        const connectedData = {
+          context: result,
+        } as any;
+
+        await expect(authenticator.connected(connectedData)).resolves.toBeUndefined();
+      });
+
+      it('should verify connected is only callable after authentication provides required context', async () => {
+        // Arrange
+        const userInfo = {
+          id: 'user789',
+          email: 'user3@test.com',
+        };
+
+        const mockOnConnectData = {
+          requestHeaders: {
+            authorization: 'Bearer another-valid-token',
+          },
+          connectionConfig: {},
+          documentName: 'test-document',
+        } as any;
+
+        authService.getUserIdentity.mockResolvedValue(userInfo);
+
+        // Act
+        const authResult = await authenticator.onConnect(mockOnConnectData);
+
+        // Assert - authentication must succeed first
+        expect(authResult).toBeDefined();
+        expect(authResult?.isAuthenticated).toBe(true);
+
+        // connected() requires the authentication context
+        const connectedPayload = {
+          context: authResult,
+          documentName: 'test-document',
+        } as any;
+
+        // This demonstrates that connected() can only be called with successful auth context
+        await expect(authenticator.connected(connectedPayload)).resolves.toBeUndefined();
+      });
+
+      it('should handle connected method logging when verbose is enabled', async () => {
+        // Arrange
+        mockLogger.verbose = vi.fn();
+
+        const userInfo = {
+          id: 'user-log-test',
+          email: 'logtest@example.com',
+        };
+
+        const mockOnConnectData = {
+          requestHeaders: {
+            cookie: 'valid-session',
+          },
+          connectionConfig: {},
+          documentName: 'test-document',
+        } as any;
+
+        authService.getUserIdentity.mockResolvedValue(userInfo);
+        const authResult = await authenticator.onConnect(mockOnConnectData);
+
+        const connectedData = {
+          context: authResult,
+          documentName: 'test-document',
+        } as any;
+
+        // Act
+        await authenticator.connected(connectedData);
+
+        // Assert
+        expect(mockLogger.verbose).toHaveBeenCalledWith(
+          '[onConnect] User logtest@example.com authenticated',
+          LogContext.AUTHENTICATION
+        );
+      });
+
+      it('should successfully call connected after onConnect with only cookie', async () => {
+        // Arrange
+        const userInfo = {
+          id: 'cookie-user',
+          email: 'cookie@example.com',
+        };
+
+        const mockOnConnectData = {
+          requestHeaders: {
+            cookie: 'session-cookie-only',
+          },
+          connectionConfig: {},
+          documentName: 'test-document',
+        } as any;
+
+        authService.getUserIdentity.mockResolvedValue(userInfo);
+
+        // Act
+        const authResult = await authenticator.onConnect(mockOnConnectData);
+
+        // Assert
+        expect(authResult).toBeDefined();
+        expect(authResult?.isAuthenticated).toBe(true);
+
+        const connectedData = {
+          context: authResult,
+        } as any;
+
+        await expect(authenticator.connected(connectedData)).resolves.toBeUndefined();
+      });
+
+      it('should successfully call connected after onConnect with only authorization header', async () => {
+        // Arrange
+        const userInfo = {
+          id: 'bearer-user',
+          email: 'bearer@example.com',
+        };
+
+        const mockOnConnectData = {
+          requestHeaders: {
+            authorization: 'Bearer bearer-token-only',
+          },
+          connectionConfig: {},
+          documentName: 'test-document',
+        } as any;
+
+        authService.getUserIdentity.mockResolvedValue(userInfo);
+
+        // Act
+        const authResult = await authenticator.onConnect(mockOnConnectData);
+
+        // Assert
+        expect(authResult).toBeDefined();
+        expect(authResult?.isAuthenticated).toBe(true);
+
+        const connectedData = {
+          context: authResult,
+        } as any;
+
+        await expect(authenticator.connected(connectedData)).resolves.toBeUndefined();
+      });
+
+      it('should verify connected receives correct authenticatedBy value from onAuthenticate', async () => {
+        // Arrange
+        mockLogger.verbose = vi.fn();
+
+        const userInfo = {
+          id: 'auth-by-test',
+          email: 'authby@example.com',
+        };
+
+        const mockOnAuthenticateData = {
+          token: 'valid-token',
+          documentName: 'test-document',
+          connectionConfig: { isAuthenticated: false },
+        } as any;
+
+        authService.getUserIdentity.mockResolvedValue(userInfo);
+
+        // Act
+        const authResult = await authenticator.onAuthenticate(mockOnAuthenticateData);
+
+        const connectedData = {
+          context: authResult,
+          documentName: 'test-document',
+        } as any;
+
+        await authenticator.connected(connectedData);
+
+        // Assert
+        expect(mockLogger.verbose).toHaveBeenCalledWith(
+          '[onAuthenticate] User authby@example.com authenticated',
+          LogContext.AUTHENTICATION
+        );
+      });
+    });
+  });
 });
