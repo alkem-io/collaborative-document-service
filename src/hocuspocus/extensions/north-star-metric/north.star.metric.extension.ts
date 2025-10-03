@@ -25,6 +25,7 @@ type ContributionTrackerRoomData = {
 @Injectable()
 export class NorthStarMetric implements Extension {
   public readonly extensionName: string;
+  public priority?: number
 
   // keep track of users per room, who have contributed in the past interval;
   // this MUST be cleared on each interval tick and on document unload
