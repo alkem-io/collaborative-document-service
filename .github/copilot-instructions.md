@@ -33,7 +33,7 @@ Read the README.md file in the root directory.
 - Write each unit test with the pattern `arrange, act, assert`. Add a comment before each stage.
 - Mocking is generally discouraged, when there is no intention to spy on the mocked functionality.
 Instead, use `defaultMockerFactory` with `TestingModuleBuilder.useMocker`.
-- to run a specific test file use `pnpm test -- <your file path>`
+- to run a specific test file use `pnpm test <your file path>`
 
 ## Additional Notes
 - Always validate Copilot suggestions before merging.

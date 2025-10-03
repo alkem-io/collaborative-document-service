@@ -1,7 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Extension, Hocuspocus, Server } from '@hocuspocus/server';
-import { ConfigType } from '../config';
+import { Hocuspocus, Server } from '@hocuspocus/server';
 import {
   AlkemioAuthorizer,
   ALKEMIO_AUTHORIZATION_EXTENSION,
@@ -14,8 +13,9 @@ import {
   ALKEMIO_STORAGE_EXTENSION,
   AlkemioStorage,
 } from '@src/hocuspocus/extensions/storage/alkemio-storage';
-import { NORTH_STAR_METRIC_EXTENSION } from '@src/hocuspocus/extensions/north-star-metric';
-import { NorthStarMetric } from '@src/hocuspocus/extensions/north-star-metric/north.star.metric.extension';
+import { NorthStarMetric, NORTH_STAR_METRIC_EXTENSION } from '@src/hocuspocus/extensions/north-star-metric';
+import { ConfigType } from '../config';
+import { sortExtensions } from './sort.extensions';
 
 @Injectable()
 export class HocuspocusServer implements OnModuleInit, OnModuleDestroy {
@@ -83,15 +83,4 @@ export class HocuspocusServer implements OnModuleInit, OnModuleDestroy {
     return connections.filter(connection => !connection.readOnly);
   }
 }
-/**
- * Assigns a sort order to extensions based on their order in the array,
- * starting from index 0, assigning it the highest priority.
- * @param array
- */
-const sortExtensions = (array: Array<Extension>): Array<Extension> => {
-  const highestPriority = array.length;
-  return array.map((extension, index) => {
-    extension.priority = highestPriority - index;
-    return extension;
-  });
-};
+
