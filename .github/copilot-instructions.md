@@ -38,3 +38,4 @@ Instead, use `defaultMockerFactory` with `TestingModuleBuilder.useMocker`.
 ## Additional Notes
 - Always validate Copilot suggestions before merging.
 - Document any Copilot-generated code if not self-explanatory.
+- When using the console tool, assume it is being run in the root of the project unless specified otherwise.
