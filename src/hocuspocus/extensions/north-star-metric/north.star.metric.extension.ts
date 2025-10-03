@@ -44,8 +44,8 @@ export class NorthStarMetric implements Extension {
   }
   // start the timer when the document is loaded
   // this coalesces with the time the room was created
-  async afterLoadDocument({ document }: afterLoadDocumentPayload): Promise<any> {
-    await this.startContributionTracker(document);
+  afterLoadDocument({ document }: afterLoadDocumentPayload): Promise<any> {
+    this.startContributionTracker(document);
     return Promise.resolve();
   }
   // update client context about the last time they have changed the document

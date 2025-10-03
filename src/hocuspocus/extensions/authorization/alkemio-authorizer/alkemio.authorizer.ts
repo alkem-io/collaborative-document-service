@@ -49,6 +49,10 @@ export class AlkemioAuthorizer extends AbstractAuthorizer {
       return Promise.reject();
     }
 
+    if (data.context.authorizedBy) {
+      return Promise.resolve();
+    }
+
     const {
       documentName: documentId,
       context: { userInfo },
