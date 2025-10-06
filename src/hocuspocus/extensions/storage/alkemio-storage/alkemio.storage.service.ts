@@ -33,7 +33,7 @@ export class AlkemioStorageService {
     if (isSaveErrorData(result.data)) {
       this.logger.error(
         {
-          message: 'Received error when requesting to save the document',
+          message: 'Received error while requesting to save the document',
           errorMessage: result.data.error,
           documentId,
         },
