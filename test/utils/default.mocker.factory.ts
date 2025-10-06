@@ -1,10 +1,14 @@
-import { InjectionToken } from '@nestjs/common';
 import { vi } from 'vitest';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import { InjectionToken, ValueProvider } from '@nestjs/common';
+import { MockWinstonProvider } from '@test/mocks';
 
 /**
  * You can add already existing providers here, to be auto mocked
  */
-const mockerDictionary = new Map<InjectionToken, any>();
+const mockerDictionary = new Map<InjectionToken, ValueProvider<unknown>>([
+  [WINSTON_MODULE_NEST_PROVIDER, MockWinstonProvider],
+]);
 /**
  * Use when you don't want a specific mock for your test.
  * A default mocker factory for NestJS testing module. It auto mocks all class methods with vi.fn().
@@ -27,7 +31,7 @@ export const defaultMockerFactory = (token: InjectionToken | undefined) => {
   if (typeof token === 'string') {
     const mockProvider = mockerDictionary.get(token);
     if (mockProvider) {
-      return mockProvider;
+      return mockProvider.useValue;
     }
   }
 
