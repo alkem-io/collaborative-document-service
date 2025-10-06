@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it } from 'vitest';
 import { ConfigService } from '@nestjs/config';
 import { Document } from '@hocuspocus/server';
 import { NorthStarMetric } from './north.star.metric.extension';
@@ -91,9 +91,19 @@ describe('NorthStarMetric', () => {
   });
 
   describe('onChange - green paths', () => {
+    let mockDocument: Document;
+    const documentName = 'test-room';
+
+    beforeEach(() => {
+      mockDocument = createMockDocument(documentName);
+    });
+
+    afterEach(async () => {
+      await extension.beforeUnloadDocument({ document: documentName } as any);
+    });
+
     it('should update lastContributed timestamp when userInfo exists', async () => {
       // Arrange
-      const mockDocument = createMockDocument('test-room');
       const payload = {
         document: mockDocument,
         context: {
@@ -115,7 +125,6 @@ describe('NorthStarMetric', () => {
 
     it('should set lastContributed for multiple onChange calls', async () => {
       // Arrange
-      const mockDocument = createMockDocument('test-room');
       const payload1 = {
         document: mockDocument,
         context: {
@@ -143,7 +152,6 @@ describe('NorthStarMetric', () => {
 
     it('should handle onChange calls with the same user multiple times', async () => {
       // Arrange
-      const mockDocument = createMockDocument('test-room');
       const payload = {
         document: mockDocument,
         context: {
@@ -236,6 +244,10 @@ describe('NorthStarMetric', () => {
       // Assert
       expect(changePayload1.context.lastContributed).toBeDefined();
       expect(changePayload2.context.lastContributed).toBeDefined();
+
+      // cleanup
+      await extension.beforeUnloadDocument({ document: mockDocument1 } as any);
+      await extension.beforeUnloadDocument({ document: mockDocument2 } as any);
     });
 
     it('should update timestamp for each onChange call', async () => {
@@ -254,7 +266,7 @@ describe('NorthStarMetric', () => {
       await extension.onChange(payload);
       const timestamp1 = payload.context.lastContributed;
 
-      await new Promise((resolve) => setTimeout(resolve, 1));
+      await new Promise(resolve => setTimeout(resolve, 1));
 
       await extension.onChange(payload);
       const timestamp2 = payload.context.lastContributed;
@@ -263,6 +275,9 @@ describe('NorthStarMetric', () => {
       expect(timestamp1).toBeDefined();
       expect(timestamp2).toBeDefined();
       expect(timestamp2).toBeGreaterThanOrEqual(timestamp1!);
+
+      // cleanup
+      await extension.beforeUnloadDocument({ document: mockDocument } as any);
     });
   });
 });
