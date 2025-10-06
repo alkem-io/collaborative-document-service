@@ -25,7 +25,7 @@ type ContributionTrackerRoomData = {
 @Injectable()
 export class NorthStarMetric implements Extension {
   public readonly extensionName: string;
-  public priority?: number
+  public priority?: number;
 
   // keep track of users per room, who have contributed in the past interval;
   // this MUST be cleared on each interval tick and on document unload
@@ -54,13 +54,13 @@ export class NorthStarMetric implements Extension {
       return Promise.resolve();
     }
 
-    data.context.lastContributed = new Date().getTime();
-
     const thisUserId = data.context.userInfo.id;
 
     if (!thisUserId) {
       return Promise.resolve();
     }
+
+    data.context.lastContributed = new Date().getTime();
 
     const roomId = data.document.name;
     const roomData = this.contributionTrackers.get(roomId);

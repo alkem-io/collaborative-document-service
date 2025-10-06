@@ -24,10 +24,11 @@ export class AlkemioStorage extends AbstractStorage {
   /**
    * Called once, when the first client connects to the server, during the creation of a new document.
    * Called after onAuthenticate
+   * @throws if the document cannot be loaded
    */
   public async onLoadDocument({
     documentName: documentId,
-  }: onLoadDocumentPayload): Promise<Doc | null> {
+  }: onLoadDocumentPayload): Promise<Doc> {
     try {
       return await this.storageService.loadDocument(documentId);
     } catch (error: any) {
@@ -40,7 +41,6 @@ export class AlkemioStorage extends AbstractStorage {
         error?.stack,
         LogContext.STORAGE
       );
-      // Return null to let Hocuspocus create a new document
       throw error;
     }
   }

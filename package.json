@@ -18,7 +18,7 @@
     "start:dev": "nest start --watch",
     "test": "vitest run --config test/config/vitest.config.ts",
     "test:ui": "vitest --ui --config test/config/vitest.config.ts",
-    "test:coverage": "vitest run --coverage --config test/config/vitest.config.ts && start coverage/index.html"
+    "test:coverage": "vitest run --coverage --config test/config/vitest.config.ts && open-cli coverage/index.html"
   },
   "keywords": [
     "collaboration",
@@ -76,6 +76,7 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-unicorn": "^59.0.1",
     "eslint-plugin-vitest": "^0.5.4",
+    "open-cli": "^8.0.0",
     "rimraf": "^6.0.1",
     "ts-loader": "^9.5.4",
     "tsconfig-paths": "^4.2.0",

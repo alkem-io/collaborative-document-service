@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { UtilService } from '@src/services/util';
-import { AuthorizationResult, DocumentPermissions } from '../types';
-import { ReadOnlyCode } from '../../authorization/types';
+import { AuthorizationResult, DocumentPermissions, ReadOnlyCode } from '../types';
 
 @Injectable()
 export class AlkemioAuthorizationService {
@@ -72,7 +71,7 @@ export class AlkemioAuthorizationService {
       return { readOnly: true, readOnlyCode: ReadOnlyCode.NO_UPDATE_ACCESS };
     }
 
-    if (collaboratorCount === 1 && !isMultiUser) {
+    if (collaboratorCount > 0 && !isMultiUser) {
       return { readOnly: true, readOnlyCode: ReadOnlyCode.MULTI_USER_NOT_ALLOWED };
     }
 

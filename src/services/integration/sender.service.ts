@@ -35,10 +35,10 @@ export class SenderService {
     client: ClientProxy,
     pattern: IntegrationMessagePattern,
     data: TInput,
-    options?: { timeoutMs?: number; maxRetries?: number }
+    options: { timeoutMs: number; maxRetries: number }
   ): Promise<TResult | never> => {
-    const timeoutMs = options?.timeoutMs;
-    const maxRetries = options?.maxRetries;
+    const timeoutMs = options.timeoutMs;
+    const maxRetries = options.maxRetries;
 
     const result$ = client.send<TResult, TInput>(pattern, data).pipe(
       timeInterval(),

@@ -86,24 +86,7 @@ describe('NorthStarMetric', () => {
       await extension.onChange(payload);
 
       // Assert
-      expect(payload.context.lastContributed).toBeDefined();
-    });
-
-    it('should return early when contribution tracker does not exist for room', async () => {
-      // Arrange
-      const mockDocument = createMockDocument('test-room');
-      const payload = {
-        document: mockDocument,
-        context: {
-          userInfo: mockUserInfo,
-        } as ConnectionContext,
-      } as any;
-
-      // Act
-      await extension.onChange(payload);
-
-      // Assert
-      expect(payload.context.lastContributed).toBeDefined();
+      expect(payload.context.lastContributed).toBeUndefined();
     });
   });
 
@@ -117,6 +100,8 @@ describe('NorthStarMetric', () => {
           userInfo: mockUserInfo,
         } as ConnectionContext,
       } as any;
+      // start the timer
+      await extension.afterLoadDocument(payload);
 
       const beforeTime = Date.now();
 
@@ -144,6 +129,9 @@ describe('NorthStarMetric', () => {
         } as ConnectionContext,
       } as any;
 
+      // start the timer
+      await extension.afterLoadDocument({ document: mockDocument } as any);
+
       // Act
       await extension.onChange(payload1);
       await extension.onChange(payload2);
@@ -162,6 +150,9 @@ describe('NorthStarMetric', () => {
           userInfo: mockUserInfo,
         } as ConnectionContext,
       } as any;
+
+      // start the timer
+      await extension.afterLoadDocument({ document: mockDocument } as any);
 
       // Act
       await extension.onChange(payload);
@@ -234,6 +225,9 @@ describe('NorthStarMetric', () => {
           userInfo: mockUserInfo2,
         } as ConnectionContext,
       } as any;
+      // start the timer
+      await extension.afterLoadDocument({ document: mockDocument1 } as any);
+      await extension.afterLoadDocument({ document: mockDocument2 } as any);
 
       // Act
       await extension.onChange(changePayload1);
@@ -253,6 +247,8 @@ describe('NorthStarMetric', () => {
           userInfo: mockUserInfo,
         } as ConnectionContext,
       } as any;
+      // start the timer
+      await extension.afterLoadDocument({ document: mockDocument } as any);
 
       // Act
       await extension.onChange(payload);

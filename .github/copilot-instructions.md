@@ -16,7 +16,7 @@ Read the README.md file in the root directory.
 
 ## Folder Structure
 - `src/`: Source code
-- `tests/`: Unit and integration tests
+- `test/`: Unit and integration tests
 
 ## Dependencies
 - Use `pnpm` for package management.

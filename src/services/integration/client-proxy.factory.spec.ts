@@ -119,8 +119,12 @@ describe('clientProxyFactory', () => {
 
       // Assert
       expect(result).toBe(mockClientProxy);
-      const calls = vi.mocked(ClientProxyFactory.create).mock.calls;
-      expect(calls?.[0]?.[0]?.options?.urls?.[0]?.heartbeat).toBe(180); // 3x the configured value; // 3x the configured value
+      expect(ClientProxyFactory.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+          urls: [expect.objectContaining({ heartbeat: 180 })], // 3x the configured value
+        }),
+      }));
     });
   });
 
