@@ -1,35 +1,35 @@
-# Alpine images are significantly smaller than their slim or full counterparts, reducing the overall image size.
-FROM node:22.17.1-alpine AS builder
+# --- Builder stage ---
+FROM node:22.22.0-alpine AS builder
+WORKDIR /app
 
-WORKDIR /usr/src/app
-
+# Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Combining multiple RUN commands reduces the number of layers in the Docker image, which helps optimize the image size and build time.
-# Each RUN command creates a new layer, so minimizing the number of layers is a best practice.
-RUN npm install -g pnpm@10.14.0 && pnpm install --frozen-lockfile
+# Install all dependencies (dev + prod)
+RUN corepack enable && pnpm install
 
+# Copy source code
 COPY . .
 
+# Build app (includes tsc-esm-fix if in your scripts)
 RUN pnpm run build
 
-# Alpine images are significantly smaller than their slim or full counterparts, reducing the overall image size.
-FROM node:22.17.1-alpine
+# Optional: prune dev dependencies for production
+RUN pnpm prune --prod
 
-WORKDIR /usr/src/app
+# --- Runtime stage ---
+FROM node:22.22.0-alpine
+WORKDIR /app
 
-COPY --from=builder /usr/src/app/dist ./dist
-COPY --from=builder /usr/src/app/package.json ./package.json
-COPY --from=builder /usr/src/app/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=builder /usr/src/app/config.yml ./config.yml
-
-# Re-install dependencies in the final stage
-# This step is crucial for pnpm. We install only production dependencies
-# to keep the image as small as possible.
-RUN npm install -g pnpm@10.14.0 && pnpm install --frozen-lockfile --prod
+# Copy compiled app and production dependencies
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/config.yml ./config.yml
+COPY --from=builder /app/node_modules ./node_modules
 
 ENV NODE_ENV=production
-
 EXPOSE 4004
 
-CMD ["/bin/sh", "-c", "npm run start:prod NODE_OPTIONS=--max-old-space-size=4096"]
+# Start the app
+CMD ["node", "dist/main.js"]
