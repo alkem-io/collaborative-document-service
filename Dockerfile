@@ -15,7 +15,7 @@ COPY . .
 RUN pnpm run build && pnpm prune --prod
 
 # Stage 2: Create the production image
-FROM gcr.io/distroless/nodejs22-debian12
+FROM gcr.io/distroless/nodejs22-debian12:nonroot
 
 WORKDIR /usr/src/app
 
