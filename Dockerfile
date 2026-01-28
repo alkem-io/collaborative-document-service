@@ -1,5 +1,5 @@
 # Stage 1: Build the application
-FROM node:22-bookworm AS build
+FROM node:22-slim AS build
 
 WORKDIR /usr/src/app
 
@@ -26,7 +26,6 @@ COPY --from=build --chown=nonroot:nonroot /usr/src/app/config.yml ./config.yml
 COPY --from=build --chown=nonroot:nonroot /usr/src/app/package.json ./package.json
 
 ENV NODE_ENV=production
-ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 USER nonroot
 
