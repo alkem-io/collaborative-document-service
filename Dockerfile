@@ -1,35 +1,34 @@
-# --- Builder stage ---
-FROM node:22.22.0-alpine AS builder
-WORKDIR /app
+# Stage 1: Build the application
+FROM node:22-slim AS build
 
-# Copy package files
+WORKDIR /usr/src/app
+
 COPY package.json pnpm-lock.yaml ./
 
-# Install all dependencies (dev + prod)
-RUN corepack enable && pnpm install
+# Use pnpm with the lockfile to install all dependencies for building
+RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
-# Copy source code
+# Copy the rest of the source code
 COPY . .
 
-# Build app (includes tsc-esm-fix if in your scripts)
-RUN pnpm run build
+# Build the application and trim dev dependencies out of node_modules
+RUN pnpm run build && pnpm prune --prod
 
-# Optional: prune dev dependencies for production
-RUN pnpm prune --prod
+# Stage 2: Create the production image
+FROM gcr.io/distroless/nodejs22-debian12:nonroot
 
-# --- Runtime stage ---
-FROM node:22.22.0-alpine
-WORKDIR /app
+WORKDIR /usr/src/app
 
-# Copy compiled app and production dependencies
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/pnpm-lock.yaml ./
-COPY --from=builder /app/config.yml ./config.yml
-COPY --from=builder /app/node_modules ./node_modules
+# Copy compiled artifacts and production dependencies
+COPY --from=build --chown=nonroot:nonroot /usr/src/app/dist ./dist
+COPY --from=build --chown=nonroot:nonroot /usr/src/app/node_modules ./node_modules
+COPY --from=build --chown=nonroot:nonroot /usr/src/app/config.yml ./config.yml
+COPY --from=build --chown=nonroot:nonroot /usr/src/app/package.json ./package.json
 
 ENV NODE_ENV=production
+
+USER nonroot
+
 EXPOSE 4004
 
-# Start the app
-CMD ["node", "dist/main.js"]
+CMD ["dist/main.js"]
