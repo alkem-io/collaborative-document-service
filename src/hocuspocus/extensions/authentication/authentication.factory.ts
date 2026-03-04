@@ -88,7 +88,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
         logger.verbose?.(
           {
             message: `[${handleName}] Client is authenticated but does not have READ access to the document.`,
-            userId: userInfo?.email,
+            userId: userInfo?.id,
             documentId,
           },
           LogContext.AUTHENTICATION
@@ -238,7 +238,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
           logger.verbose?.(
             {
               message: '[onAuthenticate] Client failed to authenticate.',
-              userId: userInfo?.email,
+              userId: userInfo?.id,
               documentId: data.documentName,
             },
             LogContext.AUTHENTICATION
@@ -298,7 +298,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
           logger.verbose?.(
             {
               message: `[${authenticatedBy}] User authenticated`,
-              userId: userInfo?.email,
+              userId: userInfo?.id,
               documentId: data.documentName,
               read: true,
               readOnly,
