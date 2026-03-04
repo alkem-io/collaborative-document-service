@@ -105,7 +105,10 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
       IntegrationMessagePattern.WHO,
       data
     );
-    return { id: id || '' };
+    if (!id) {
+      throw new Error('WHO response missing id');
+    }
+    return { id };
   }
 
   public async info(data: InfoInputData) {
