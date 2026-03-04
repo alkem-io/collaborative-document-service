@@ -81,14 +81,14 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
         update: canUpdate,
         isMultiUser,
         maxCollaborators,
-      } = await utilService.getUserAccessToMemo(userInfo.id, documentId);
+      } = await utilService.getUserAccessToMemo(userInfo?.id, documentId);
       // user is authenticated, but does not have read access to the document - disconnect
       // here it does not make sense to potentially retry again in a different hook, since the READ won't change
       if (!canRead) {
         logger.verbose?.(
           {
             message: `[${handleName}] Client is authenticated but does not have READ access to the document.`,
-            userId: userInfo?.id,
+            userId: userInfo?.id, // userId is interchangeable with actorId; see UserInfo
             documentId,
           },
           LogContext.AUTHENTICATION
@@ -97,7 +97,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
           'User does not have read access to this document.',
           LogContext.AUTHENTICATION,
           {
-            userId: userInfo.id,
+            userId: userInfo?.id, // userId is interchangeable with actorId; see UserInfo
             documentId,
           }
         );
@@ -238,7 +238,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
           logger.verbose?.(
             {
               message: '[onAuthenticate] Client failed to authenticate.',
-              userId: userInfo?.id,
+              userId: userInfo?.id, // userId is interchangeable with actorId; see UserInfo
               documentId: data.documentName,
             },
             LogContext.AUTHENTICATION
@@ -247,7 +247,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
             'User is not authenticated.',
             LogContext.AUTHENTICATION,
             {
-              userId: userInfo?.id,
+              userId: userInfo?.id, // userId is interchangeable with actorId; see UserInfo
               documentId: data.documentName,
             }
           );
@@ -298,7 +298,7 @@ const AuthenticationFactory: FactoryProvider<Extension> = {
           logger.verbose?.(
             {
               message: `[${authenticatedBy}] User authenticated`,
-              userId: userInfo?.id,
+              userId: userInfo?.id, // userId is interchangeable with actorId; see UserInfo
               documentId: data.documentName,
               read: true,
               readOnly,
