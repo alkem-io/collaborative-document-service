@@ -100,8 +100,15 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
       .catch(() => false);
   }
 
-  public async who(data: WhoInputData) {
-    return this.sendWithResponse<UserInfo, WhoInputData>(IntegrationMessagePattern.WHO, data);
+  public async who(data: WhoInputData): Promise<UserInfo> {
+    const id = await this.sendWithResponse<string, WhoInputData>(
+      IntegrationMessagePattern.WHO,
+      data
+    );
+    if (!id) {
+      throw new Error('WHO response missing id');
+    }
+    return { id };
   }
 
   public async info(data: InfoInputData) {
