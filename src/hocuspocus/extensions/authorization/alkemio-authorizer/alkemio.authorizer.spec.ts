@@ -641,7 +641,7 @@ describe('AlkemioAuthorizer', () => {
         expect(mockLogger.verbose).toHaveBeenCalledWith(
           expect.objectContaining({
             message: '[onConnect] User authorized',
-            userId: mockUserInfo.email,
+            userId: mockUserInfo.id,
             read: true,
             readOnly: false,
           }),

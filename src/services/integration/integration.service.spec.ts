@@ -203,17 +203,12 @@ describe('IntegrationService', () => {
 
     it('should send who request and return user info', async () => {
       const inputData = new WhoInputData({ authorization: 'Bearer token123' });
-      const expectedResponse = {
-        id: 'user123',
-        email: 'user@test.com',
-        displayName: 'Test User',
-      };
 
-      mockSenderService.sendWithResponse.mockResolvedValue(expectedResponse as any);
+      mockSenderService.sendWithResponse.mockResolvedValue('user123' as any);
 
       const result = await service.who(inputData);
 
-      expect(result).toEqual(expectedResponse);
+      expect(result).toEqual({ id: 'user123' });
       expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
         mockClientProxy,
         IntegrationMessagePattern.WHO,
@@ -242,7 +237,7 @@ describe('IntegrationService', () => {
       const result = await service.who(inputData);
 
       // assert
-      expect(result).toEqual(errorResponse);
+      expect(result).toEqual({ id: errorResponse });
       expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
         mockClientProxy,
         IntegrationMessagePattern.WHO,

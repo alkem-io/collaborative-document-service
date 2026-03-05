@@ -185,7 +185,7 @@ describe('AlkemioAuthenticator', () => {
       await authenticator.connected(connectedData);
 
       expect(mockLogger.verbose).toHaveBeenCalledWith(
-        '[onConnect] User user@test.com authenticated',
+        '[onConnect] User user123 authenticated',
         LogContext.AUTHENTICATION
       );
     });
@@ -500,7 +500,7 @@ describe('AlkemioAuthenticator', () => {
 
         // Assert
         expect(mockLogger.verbose).toHaveBeenCalledWith(
-          '[onConnect] User logtest@example.com authenticated',
+          '[onConnect] User user-log-test authenticated',
           LogContext.AUTHENTICATION
         );
       });
@@ -596,7 +596,7 @@ describe('AlkemioAuthenticator', () => {
 
         // Assert
         expect(mockLogger.verbose).toHaveBeenCalledWith(
-          '[onAuthenticate] User authby@example.com authenticated',
+          '[onAuthenticate] User auth-by-test authenticated',
           LogContext.AUTHENTICATION
         );
       });
