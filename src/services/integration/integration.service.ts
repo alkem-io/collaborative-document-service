@@ -113,12 +113,18 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
-      return await this.senderService.sendWithResponse<UserInfo, WhoInputData>(
+      const id = await this.senderService.sendWithResponse<string, WhoInputData>(
         this.client,
         IntegrationMessagePattern.WHO,
         data,
         this.defaultRequestConfig
       );
+
+      if (!id) {
+        throw new Error('WHO response missing id');
+      }
+
+      return { id };
     } catch (e: any) {
       this.logger.error(
         {
