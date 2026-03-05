@@ -112,7 +112,7 @@ export class AlkemioAuthorizer extends AbstractAuthorizer {
       this.logger.verbose?.(
         {
           message: `[${authorizedBy}] User authorized`,
-          userId: userInfo?.email,
+          userId: userInfo?.id,
           read: true,
           readOnly,
           readOnlyCode,

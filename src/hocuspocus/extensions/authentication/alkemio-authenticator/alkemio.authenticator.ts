@@ -73,7 +73,7 @@ export class AlkemioAuthenticator extends AbstractAuthenticator {
       this.logger.verbose?.(
         {
           message: '[onAuthenticate] Client failed to authenticate.',
-          userId: userInfo?.email,
+          userId: userInfo?.id,
           documentId: data.documentName,
         },
         LogContext.AUTHENTICATION
@@ -101,7 +101,7 @@ export class AlkemioAuthenticator extends AbstractAuthenticator {
       } = data;
 
       this.logger.verbose?.(
-        `[${authenticatedBy}] User ${userInfo!.email} authenticated`,
+        `[${authenticatedBy}] User ${userInfo!.id} authenticated`,
         LogContext.AUTHENTICATION
       );
     }
