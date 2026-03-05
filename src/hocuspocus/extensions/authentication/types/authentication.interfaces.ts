@@ -1,4 +1,10 @@
 import { UserInfo } from '@src/services/integration/types';
+import { ReadOnlyCode } from '../../authorization/types';
+
+export interface ReadOnlyState {
+  readOnly: boolean;
+  readOnlyCode?: ReadOnlyCode;
+}
 
 export interface AuthenticationResult {
   isAuthenticated: boolean;
