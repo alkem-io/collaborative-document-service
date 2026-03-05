@@ -62,7 +62,12 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
         ...rabbitMqOptions,
         queue,
       });
-    } catch {
+    } catch (err) {
+      this.logger.error(
+        'Client proxy factory failed',
+        err instanceof Error ? err.stack : String(err),
+        LogContext.INTEGRATION
+      );
       this.client = undefined;
     }
 
