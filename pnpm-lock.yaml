@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@hocuspocus/server':
         specifier: ^3.2.3
-        version: 3.2.4(y-protocols@1.0.6(yjs@13.6.27))(yjs@13.6.27)
+        version: 3.2.6(y-protocols@1.0.6(yjs@13.6.27))(yjs@13.6.27)
       '@nestjs/common':
         specifier: ^11.1.6
         version: 11.1.6(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -595,11 +595,11 @@ packages:
   '@fastify/proxy-addr@5.0.0':
     resolution: {integrity: sha512-37qVVA1qZ5sgH7KpHkkC4z9SK6StIsIcOmpjvMPXNb3vx2GQxhZocogVYbr2PbbeLCQxYIPDok307xEvRZOzGA==}
 
-  '@hocuspocus/common@3.2.4':
-    resolution: {integrity: sha512-EfnW+zu2VqLrtSU2LV4/4BGtSJvODZv2GKVGRFXKMvqwB87d7MGIBRnRi2Rz/QgX81GfWG5yHG1ad9oZE8DHLQ==}
+  '@hocuspocus/common@3.4.4':
+    resolution: {integrity: sha512-RykIJ0tsHHMP4Xk+4UCbc7SO5LgGxGUSTdbh6anJEsaALAyqinf1Nn5HYuMjLPolAmsar1v++m9zufR09NLpXA==}
 
-  '@hocuspocus/server@3.2.4':
-    resolution: {integrity: sha512-YkDO2FZNnpVa3zLYlVgdfj85rCz2qycPyVNGUWlHkXgdkN9uIEWdWkDQwetfwiE5LoFatv02Rwr0fM6JfmPV+w==}
+  '@hocuspocus/server@3.2.6':
+    resolution: {integrity: sha512-0ZK53OrwhUEiTyVhcG5Dgx3mj+ovb+fXUULqE7VM+m/e0mkw6TUZGpKs+lRcewMybFJ6Pw7Ke79m5+8mvEInNw==}
     peerDependencies:
       y-protocols: ^1.0.6
       yjs: ^13.6.8
@@ -1666,6 +1666,9 @@ packages:
 
   async-lock@1.4.1:
     resolution: {integrity: sha512-Az2ZTpuytrtqENulXwO3GGv1Bztugx6TT37NIo7imr/Qo0gsYiGtSdBa2B6fsXhTpVZDNfu1Qn3pk531e3q+nQ==}
+
+  async-mutex@0.5.0:
+    resolution: {integrity: sha512-1A94B18jkJ3DYq284ohPxoXbfTA5HsQ7/Mf4DEhcyLx3Bz27Rh59iScbB6EPiP+B+joue6YCxcMXSbFC1tZKwA==}
 
   async@3.2.6:
     resolution: {integrity: sha512-htCUDlxyyCLMgaM3xXg0C0LW2xqfuQ6p05pCEIsXuyQ+a1koYKTuBMzRNwmybfLgvJDMd0r1LTn4+E0Ti6C2AA==}
@@ -2871,6 +2874,11 @@ packages:
     engines: {node: '>=16'}
     hasBin: true
 
+  lib0@0.2.117:
+    resolution: {integrity: sha512-DeXj9X5xDCjgKLU/7RR+/HQEVzuuEUiwldwOGsHK/sfAfELGWEyTcf0x+uOvCvK3O2zPmZePXWL85vtia6GyZw==}
+    engines: {node: '>=16'}
+    hasBin: true
+
   light-my-request@6.6.0:
     resolution: {integrity: sha512-CHYbu8RtboSIoVsHZ6Ye4cj4Aw/yg2oAFimlF7mNvfDV192LR7nDiKtSIfCuLT7KokPSTn/9kfVLm5OGN0A28A==}
 
@@ -3884,10 +3892,6 @@ packages:
   util-deprecate@1.0.2:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
-  uuid@13.0.0:
-    resolution: {integrity: sha512-XQegIaBTVUjSHliKqcnFqYypAd4S+WCYt5NIeRs6w/UAry7z8Y9j5ZwRRL4kzq9U3sD6v+85er9FvkEaBpji2w==}
-    hasBin: true
-
   vite-node@3.2.4:
     resolution: {integrity: sha512-EbKSKh+bh1E1IFxeO0pg1n4dvoOTt0UDiXMd/qn++r98+jPO1xtJilvXldeuQ8giIB5IkpjCgMleHMNEsGH6pg==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
@@ -4044,8 +4048,8 @@ packages:
     resolution: {integrity: sha512-si7QWI6zUMq56bESFvagtmzMdGOtoxfR+Sez11Mobfc7tm+VkUckk9bW2UeffTGVUbOksxmSw0AA2gs8g71NCQ==}
     engines: {node: '>=12'}
 
-  ws@8.18.3:
-    resolution: {integrity: sha512-PEIGCY5tSlUt50cqyMXfCzX+oOPqN0vuGqWzbcJ2xvnkzkq46oOpz7dQaTDBdfICb4N14+GARUDw2XV2N4tvzg==}
+  ws@8.19.0:
+    resolution: {integrity: sha512-blAT2mjOEIi0ZzruJfIhb3nps74PRWTCz1IjglWEEpQl5XS/UNama6u2/rjFkDDouqr4L67ry+1aGIALViWjDg==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -4420,18 +4424,18 @@ snapshots:
       '@fastify/forwarded': 3.0.0
       ipaddr.js: 2.2.0
 
-  '@hocuspocus/common@3.2.4':
+  '@hocuspocus/common@3.4.4':
     dependencies:
-      lib0: 0.2.114
+      lib0: 0.2.117
 
-  '@hocuspocus/server@3.2.4(y-protocols@1.0.6(yjs@13.6.27))(yjs@13.6.27)':
+  '@hocuspocus/server@3.2.6(y-protocols@1.0.6(yjs@13.6.27))(yjs@13.6.27)':
     dependencies:
-      '@hocuspocus/common': 3.2.4
+      '@hocuspocus/common': 3.4.4
       async-lock: 1.4.1
+      async-mutex: 0.5.0
       kleur: 4.1.5
-      lib0: 0.2.114
-      uuid: 13.0.0
-      ws: 8.18.3
+      lib0: 0.2.117
+      ws: 8.19.0
       y-protocols: 1.0.6(yjs@13.6.27)
       yjs: 13.6.27
     transitivePeerDependencies:
@@ -5545,6 +5549,10 @@ snapshots:
   async-function@1.0.0: {}
 
   async-lock@1.4.1: {}
+
+  async-mutex@0.5.0:
+    dependencies:
+      tslib: 2.8.1
 
   async@3.2.6: {}
 
@@ -6868,6 +6876,10 @@ snapshots:
     dependencies:
       isomorphic.js: 0.2.5
 
+  lib0@0.2.117:
+    dependencies:
+      isomorphic.js: 0.2.5
+
   light-my-request@6.6.0:
     dependencies:
       cookie: 1.0.2
@@ -7887,8 +7899,6 @@ snapshots:
 
   util-deprecate@1.0.2: {}
 
-  uuid@13.0.0: {}
-
   vite-node@3.2.4(@types/node@22.18.8)(terser@5.43.1):
     dependencies:
       cac: 6.7.14
@@ -8110,7 +8120,7 @@ snapshots:
       string-width: 5.1.2
       strip-ansi: 7.1.0
 
-  ws@8.18.3: {}
+  ws@8.19.0: {}
 
   wsl-utils@0.1.0:
     dependencies:
@@ -8118,7 +8128,7 @@ snapshots:
 
   y-protocols@1.0.6(yjs@13.6.27):
     dependencies:
-      lib0: 0.2.114
+      lib0: 0.2.117
       yjs: 13.6.27
 
   yaml@2.8.1: {}
