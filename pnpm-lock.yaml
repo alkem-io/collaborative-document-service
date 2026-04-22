@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@hocuspocus/server':
         specifier: ^3.2.3
-        version: 3.2.6(y-protocols@1.0.6(yjs@13.6.30))(yjs@13.6.30)
+        version: 3.4.4(y-protocols@1.0.6(yjs@13.6.30))(yjs@13.6.30)
       '@nestjs/common':
         specifier: ^11.1.6
         version: 11.1.19(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -602,8 +602,8 @@ packages:
   '@hocuspocus/common@3.4.4':
     resolution: {integrity: sha512-RykIJ0tsHHMP4Xk+4UCbc7SO5LgGxGUSTdbh6anJEsaALAyqinf1Nn5HYuMjLPolAmsar1v++m9zufR09NLpXA==}
 
-  '@hocuspocus/server@3.2.6':
-    resolution: {integrity: sha512-0ZK53OrwhUEiTyVhcG5Dgx3mj+ovb+fXUULqE7VM+m/e0mkw6TUZGpKs+lRcewMybFJ6Pw7Ke79m5+8mvEInNw==}
+  '@hocuspocus/server@3.4.4':
+    resolution: {integrity: sha512-UV+oaONAejOzeYgUygNcgsc8RdZvSokVvAxluZJIisLACpRO/VsseQ5lWKDRwLd7Fn6+rHWDH3hGuQ1fdX1Ycg==}
     peerDependencies:
       y-protocols: ^1.0.6
       yjs: ^13.6.8
@@ -4083,8 +4083,8 @@ packages:
     resolution: {integrity: sha512-si7QWI6zUMq56bESFvagtmzMdGOtoxfR+Sez11Mobfc7tm+VkUckk9bW2UeffTGVUbOksxmSw0AA2gs8g71NCQ==}
     engines: {node: '>=12'}
 
-  ws@8.19.0:
-    resolution: {integrity: sha512-blAT2mjOEIi0ZzruJfIhb3nps74PRWTCz1IjglWEEpQl5XS/UNama6u2/rjFkDDouqr4L67ry+1aGIALViWjDg==}
+  ws@8.20.0:
+    resolution: {integrity: sha512-sAt8BhgNbzCtgGbt2OxmpuryO63ZoDk/sqaB/znQm94T4fCEsy/yV+7CdC1kJhOU9lboAEU7R3kquuycDoibVA==}
     engines: {node: '>=10.0.0'}
     peerDependencies:
       bufferutil: ^4.0.1
@@ -4460,14 +4460,14 @@ snapshots:
     dependencies:
       lib0: 0.2.117
 
-  '@hocuspocus/server@3.2.6(y-protocols@1.0.6(yjs@13.6.30))(yjs@13.6.30)':
+  '@hocuspocus/server@3.4.4(y-protocols@1.0.6(yjs@13.6.30))(yjs@13.6.30)':
     dependencies:
       '@hocuspocus/common': 3.4.4
       async-lock: 1.4.1
       async-mutex: 0.5.0
       kleur: 4.1.5
       lib0: 0.2.117
-      ws: 8.19.0
+      ws: 8.20.0
       y-protocols: 1.0.6(yjs@13.6.30)
       yjs: 13.6.30
     transitivePeerDependencies:
@@ -8193,7 +8193,7 @@ snapshots:
       string-width: 5.1.2
       strip-ansi: 7.2.0
 
-  ws@8.19.0: {}
+  ws@8.20.0: {}
 
   wsl-utils@0.1.0:
     dependencies:
