@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout GitHub Action'
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4.3.1
 
       - name: 'Login into ACR'
         uses: azure/docker-login@v2
@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 'Checkout GitHub Action'
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4.3.1
 
       - name: Install Kubectl
         uses: azure/setup-kubectl@v4.0.1
@@ -49,7 +49,7 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Deploy to k8s on Hetzner
-        uses: azure/k8s-deploy@v5.0.4
+        uses: azure/k8s-deploy@v5.1.0
         with:
           manifests: |
             manifests/collaborative-document-service-deployment-dev.yaml
