@@ -2,44 +2,56 @@ import { Injectable, Inject } from '@nestjs/common';
 import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
 import { connectedPayload, onAuthenticatePayload, onConnectPayload } from '@hocuspocus/server';
 import { LogContext } from '@common/enums';
+import { UserInfo } from '@src/services/integration/types';
 import { onConnectSharedData } from '../../types';
 import { AbstractAuthenticator } from '../abstract.authenticator';
-import { AuthenticationContext, AuthenticationResult, WithAuthenticationContext } from '../types';
+import { AuthenticationContext, WithAuthenticationContext } from '../types';
 import { AuthenticationException } from '../exceptions';
-import { AlkemioAuthenticationService } from './alkemio.authentication.service';
 
+const HEADER_ACTOR_ID_LOWER = 'x-alkemio-actor-id';
+
+/**
+ * Identity is established at the gateway by Traefik's `alkemio-resolve`
+ * forwardAuth middleware (alkemio-server's `/api/auth/resolve`). The gateway
+ * stamps `X-Alkemio-Actor-Id` on the websocket-upgrade request after
+ * validating the request's cookie session OR Hydra-issued bearer.
+ *
+ * `strip-client-alkemio-headers` runs before `alkemio-resolve`, so any
+ * client-supplied X-Alkemio-* is blanked before resolve overwrites it. The
+ * header that arrives here is server-trusted.
+ *
+ * No token validation in hocuspocus — single source of truth lives in
+ * alkemio-server. If the header is absent the request is treated as
+ * unauthenticated.
+ */
 @Injectable()
 export class AlkemioAuthenticator extends AbstractAuthenticator {
   constructor(
-    private readonly authenticationService: AlkemioAuthenticationService,
-    @Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: WinstonLogger
+    @Inject(WINSTON_MODULE_NEST_PROVIDER)
+    private readonly logger: WinstonLogger
   ) {
     super(AlkemioAuthenticator.name);
   }
+
   /**
-   * Called once, when a client is connecting.
-   * This is the first method called by the server.
-   * Whatever you return will be part of the context field on each hooks
+   * Called once when a client is connecting. The returned object becomes
+   * the `context` field on every subsequent hook payload.
    */
   async onConnect(
     data: onConnectPayload & onConnectSharedData
   ): Promise<AuthenticationContext | void> {
-    const { cookie, authorization } = data.requestHeaders;
+    const actorId = extractActorIdHeader(data.requestHeaders);
 
-    const { isAuthenticated, userInfo } = await this.authenticate('onConnect', {
-      cookie,
-      authorization,
-    });
-
-    data.connectionConfig.isAuthenticated = isAuthenticated;
-
-    // user is not authenticated, wait for onAuthenticate
-    if (!isAuthenticated) {
+    if (!actorId) {
+      // No gateway-stamped identity. Hocuspocus will then call onAuthenticate
+      // when the client sends an Auth message — we fail closed there.
+      data.connectionConfig.isAuthenticated = false;
       return Promise.resolve();
     }
-    // share this with all other extensions on the same hook
+
+    const userInfo: UserInfo = { id: actorId };
+    data.connectionConfig.isAuthenticated = true;
     data.userInfo = userInfo;
-    // user is authenticated
     return {
       isAuthenticated: true,
       authenticatedBy: 'onConnect',
@@ -48,93 +60,61 @@ export class AlkemioAuthenticator extends AbstractAuthenticator {
   }
 
   /**
-   * Only called after the client has sent the Auth message,
-   * which won't happen if there is no token provided to HocuspocusProvider.
+   * Reached only if `onConnect` didn't authenticate AND the client is sending
+   * an Auth message with a token. Under the gateway pattern no caller should
+   * be here — identity must come from forwardAuth headers. Fail closed.
    */
   async onAuthenticate(
     data: WithAuthenticationContext<onAuthenticatePayload>
   ): Promise<AuthenticationContext | void> {
-    // client is already authenticated by onConnect
     if (data.connectionConfig.isAuthenticated) {
       return Promise.resolve();
     }
 
-    const { token } = data;
-    const authorization = `Bearer ${token}`;
-
-    const { userInfo, isAuthenticated } = await this.authenticate('onAuthenticate', {
-      authorization,
-    });
-
-    data.connectionConfig.isAuthenticated = isAuthenticated;
-
-    // user is NOT authenticated - disconnect
-    if (!isAuthenticated) {
-      this.logger.verbose?.(
-        {
-          message: '[onAuthenticate] Client failed to authenticate.',
-          userId: userInfo?.id,
-          documentId: data.documentName,
-        },
-        LogContext.AUTHENTICATION
-      );
-      throw new AuthenticationException('User is not authenticated.', LogContext.AUTHENTICATION, {
-        userId: userInfo?.id,
+    this.logger.verbose?.(
+      {
+        message:
+          '[onAuthenticate] No X-Alkemio-Actor-Id from gateway and no fallback path — denying.',
         documentId: data.documentName,
-      });
-    }
-    // user is authenticated, and has read access to the document
-    return {
-      isAuthenticated: true,
-      authenticatedBy: 'onAuthenticate',
-      userInfo,
-    };
+      },
+      LogContext.AUTHENTICATION
+    );
+
+    throw new AuthenticationException('User is not authenticated.', LogContext.AUTHENTICATION, {
+      documentId: data.documentName,
+    });
   }
 
   /**
-   * Called once, after a new connection has been successfully established and the user is authenticated.
+   * Called once after a connection has been successfully established.
    */
-  connected(data: WithAuthenticationContext<connectedPayload>): Promise<any> {
+  connected(data: WithAuthenticationContext<connectedPayload>): Promise<void> {
     if (this.logger.verbose) {
       const {
         context: { authenticatedBy, userInfo },
       } = data;
-
       this.logger.verbose?.(
-        `[${authenticatedBy}] User ${userInfo!.id} authenticated`,
+        `[${authenticatedBy}] Actor ${userInfo!.id} authenticated`,
         LogContext.AUTHENTICATION
       );
     }
-
     return Promise.resolve();
   }
+}
 
-  /**
-   * Main function that handles authentication flow.
-   * Delegates authorization to the authorization extension.
-   */
-  private async authenticate(
-    handleName: string,
-    auth: {
-      cookie?: string;
-      authorization?: string;
-    }
-  ): Promise<AuthenticationResult> {
-    const userInfo = await this.authenticationService.getUserIdentity(auth);
-
-    if (!userInfo) {
-      this.logger.verbose?.(
-        `[${handleName}] User info is undefined, user is not authenticated.`,
-        LogContext.AUTHENTICATION
-      );
-      return {
-        isAuthenticated: false,
-      };
-    }
-
-    return {
-      isAuthenticated: true,
-      userInfo,
-    };
+function extractActorIdHeader(
+  headers: Record<string, string | string[] | undefined> | undefined
+): string | undefined {
+  if (!headers) {
+    return undefined;
   }
+
+  const raw = headers[HEADER_ACTOR_ID_LOWER];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+
+  if (typeof value !== 'string' || value.length === 0) {
+    return undefined;
+  }
+
+  return value;
 }

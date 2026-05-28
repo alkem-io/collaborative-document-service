@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { IntegrationService } from './integration.service';
 import { NotInitializedException } from '@common/exceptions';
 import { IntegrationMessagePattern, RMQConnectionError } from './types';
-import { FetchInputData, InfoInputData, SaveInputData, WhoInputData } from './inputs';
+import { FetchInputData, InfoInputData, SaveInputData } from './inputs';
 import {
   FetchContentData,
   FetchErrorCodes,
@@ -186,77 +186,6 @@ describe('IntegrationService', () => {
       const result = await service.isConnected();
 
       expect(result).toBe(false);
-    });
-  });
-
-  describe('who', () => {
-    it('should throw error when client is undefined', async () => {
-      // Arrange
-      (service as any).client = undefined;
-      const inputData = new WhoInputData({ authorization: 'Bearer token123' });
-
-      // Act & Assert
-      await expect(service.who(inputData)).rejects.toThrow(
-        'Connection was not established. Send failed.'
-      );
-    });
-
-    it('should send who request and return user info', async () => {
-      const inputData = new WhoInputData({ authorization: 'Bearer token123' });
-
-      mockSenderService.sendWithResponse.mockResolvedValue('user123' as any);
-
-      const result = await service.who(inputData);
-
-      expect(result).toEqual({ id: 'user123' });
-      expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
-        mockClientProxy,
-        IntegrationMessagePattern.WHO,
-        inputData,
-        (service as any).defaultRequestConfig
-      );
-    });
-
-    it('should handle authentication errors', async () => {
-      const inputData = new WhoInputData({ authorization: 'Bearer invalid' });
-      const error = new Error('Unauthorized');
-
-      mockSenderService.sendWithResponse.mockRejectedValue(error);
-      const result = await service.who(inputData);
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should handle remote errors', async () => {
-      // arrange
-      const inputData = new WhoInputData({ authorization: 'Bearer token123' });
-      const errorResponse = { error: 'some remote error' };
-      mockSenderService.sendWithResponse.mockResolvedValue(errorResponse as any);
-
-      // act
-      const result = await service.who(inputData);
-
-      // assert
-      expect(result).toEqual({ id: errorResponse });
-      expect(mockSenderService.sendWithResponse).toHaveBeenCalledWith(
-        mockClientProxy,
-        IntegrationMessagePattern.WHO,
-        inputData,
-        (service as any).defaultRequestConfig
-      );
-    });
-
-    it('should handle internal error', async () => {
-      // arrange
-      const inputData = new WhoInputData({ authorization: 'Bearer token123' });
-      const error = new Error('Some internal error');
-      mockSenderService.sendWithResponse.mockRejectedValue(error);
-
-      // act
-      const result = await service.who(inputData);
-
-      // assert
-      expect(result).toBeUndefined();
     });
   });
 

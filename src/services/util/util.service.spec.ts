@@ -5,11 +5,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import * as Y from 'yjs';
 import { UtilService } from './util.service';
 import { IntegrationService } from '../integration';
-import { NotProvidedException } from '@common/exceptions';
 import { LogContext } from '@common/enums';
 import { FetchException } from './fetch.exception';
-import { UserInfo } from '../integration/types';
-import { FetchInputData, InfoInputData, SaveInputData, WhoInputData } from '../integration/inputs';
+import { FetchInputData, InfoInputData, SaveInputData } from '../integration/inputs';
 import { InfoOutputData, FetchOutputData, FetchContentData, FetchErrorData, FetchErrorCodes, SaveOutputData, SaveContentData } from '../integration/outputs';
 import * as transformModule from './transform';
 
@@ -48,101 +46,6 @@ describe('UtilService', () => {
 
     // Clear all mocks before each test
     vi.clearAllMocks();
-  });
-
-  describe('getUserInfo', () => {
-    const mockUserInfo: UserInfo = {
-      id: 'test-user-id',
-      email: 'test@example.com',
-    };
-
-    describe('failing paths', () => {
-      it('should throw NotProvidedException when neither cookie nor authorization is provided', () => {
-        // Arrange
-        const opts = {};
-
-        // Act & Assert
-        expect(() => service.getUserInfo(opts)).toThrow(NotProvidedException);
-      });
-
-      it('should throw NotProvidedException when both cookie and authorization are undefined', () => {
-        // Arrange
-        const opts = { cookie: undefined, authorization: undefined };
-
-        // Act & Assert
-        expect(() => service.getUserInfo(opts)).toThrow(NotProvidedException);
-      });
-
-      it('should throw NotProvidedException when both cookie and authorization are empty strings', () => {
-        // Arrange
-        const opts = { cookie: '', authorization: '' };
-
-        // Act & Assert
-        expect(() => service.getUserInfo(opts)).toThrow(NotProvidedException);
-      });
-    });
-
-    describe('green paths', () => {
-      it('should call integrationService.who with authorization when authorization is provided', async () => {
-        // Arrange
-        const opts = { authorization: 'Bearer token123' };
-        mockIntegrationService.who.mockResolvedValue(mockUserInfo);
-
-        // Act
-        const result = await service.getUserInfo(opts);
-
-        // Assert
-        expect(mockIntegrationService.who).toHaveBeenCalledWith(
-          new WhoInputData({ authorization: 'Bearer token123' })
-        );
-        expect(result).toEqual(mockUserInfo);
-      });
-
-      it('should call integrationService.who with cookie when only cookie is provided', async () => {
-        // Arrange
-        const opts = { cookie: 'session=abc123' };
-        mockIntegrationService.who.mockResolvedValue(mockUserInfo);
-
-        // Act
-        const result = await service.getUserInfo(opts);
-
-        // Assert
-        expect(mockIntegrationService.who).toHaveBeenCalledWith(
-          new WhoInputData({ cookie: 'session=abc123' })
-        );
-        expect(result).toEqual(mockUserInfo);
-      });
-
-      it('should prioritize authorization over cookie when both are provided', async () => {
-        // Arrange
-        const opts = {
-          cookie: 'session=abc123',
-          authorization: 'Bearer token123'
-        };
-        mockIntegrationService.who.mockResolvedValue(mockUserInfo);
-
-        // Act
-        const result = await service.getUserInfo(opts);
-
-        // Assert
-        expect(mockIntegrationService.who).toHaveBeenCalledWith(
-          new WhoInputData({ authorization: 'Bearer token123' })
-        );
-        expect(result).toEqual(mockUserInfo);
-      });
-
-      it('should return undefined when integrationService.who returns undefined', async () => {
-        // Arrange
-        const opts = { authorization: 'Bearer token123' };
-        mockIntegrationService.who.mockResolvedValue(undefined);
-
-        // Act
-        const result = await service.getUserInfo(opts);
-
-        // Assert
-        expect(result).toBeUndefined();
-      });
-    });
   });
 
   describe('getUserAccessToMemo', () => {

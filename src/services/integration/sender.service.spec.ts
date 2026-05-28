@@ -23,7 +23,7 @@ describe('SenderService', () => {
 
     const result = await service.sendWithResponse(
       mockClient,
-      IntegrationMessagePattern.WHO,
+      IntegrationMessagePattern.INFO,
       {
         some: 'data',
       } as any,
@@ -38,7 +38,7 @@ describe('SenderService', () => {
     mockClient.send.mockReturnValue(throwError(() => timeoutEx));
 
     await expect(
-      service.sendWithResponse(mockClient, IntegrationMessagePattern.WHO, { foo: 'bar' } as any, {
+      service.sendWithResponse(mockClient, IntegrationMessagePattern.INFO, { foo: 'bar' } as any, {
         timeoutMs: 1000,
         maxRetries: 0,
       })
@@ -50,7 +50,7 @@ describe('SenderService', () => {
     mockClient.send.mockReturnValue(throwError(() => new Error('transient')));
 
     await expect(
-      service.sendWithResponse(mockClient, IntegrationMessagePattern.WHO, { foo: 'bar' } as any, {
+      service.sendWithResponse(mockClient, IntegrationMessagePattern.INFO, { foo: 'bar' } as any, {
         timeoutMs: 1000,
         maxRetries: 1,
       })
@@ -63,7 +63,7 @@ describe('SenderService', () => {
     mockClient.send.mockReturnValue(throwError(() => rmq));
 
     await expect(
-      service.sendWithResponse(mockClient, IntegrationMessagePattern.WHO, { foo: 'bar' } as any, {
+      service.sendWithResponse(mockClient, IntegrationMessagePattern.INFO, { foo: 'bar' } as any, {
         timeoutMs: 1000,
         maxRetries: 0,
       })
@@ -75,7 +75,7 @@ describe('SenderService', () => {
     mockClient.send.mockReturnValue(throwError(() => err));
 
     await expect(
-      service.sendWithResponse(mockClient, IntegrationMessagePattern.WHO, { foo: 'bar' } as any, {
+      service.sendWithResponse(mockClient, IntegrationMessagePattern.INFO, { foo: 'bar' } as any, {
         timeoutMs: 1000,
         maxRetries: 0,
       })
@@ -87,7 +87,7 @@ describe('SenderService', () => {
     mockClient.send.mockReturnValue(throwError(() => undefined as any));
 
     await expect(
-      service.sendWithResponse(mockClient, IntegrationMessagePattern.WHO, { foo: 'bar' } as any, {
+      service.sendWithResponse(mockClient, IntegrationMessagePattern.INFO, { foo: 'bar' } as any, {
         timeoutMs: 1000,
         maxRetries: 0,
       })
@@ -99,7 +99,7 @@ describe('SenderService', () => {
     mockClient.send.mockReturnValue(throwError(() => null as any));
 
     await expect(
-      service.sendWithResponse(mockClient, IntegrationMessagePattern.WHO, { foo: 'bar' } as any, {
+      service.sendWithResponse(mockClient, IntegrationMessagePattern.INFO, { foo: 'bar' } as any, {
         timeoutMs: 1000,
         maxRetries: 0,
       })
@@ -112,7 +112,7 @@ describe('SenderService', () => {
     mockClient.send.mockReturnValue(throwError(() => unknownError));
 
     await expect(
-      service.sendWithResponse(mockClient, IntegrationMessagePattern.WHO, { foo: 'bar' } as any, {
+      service.sendWithResponse(mockClient, IntegrationMessagePattern.INFO, { foo: 'bar' } as any, {
         timeoutMs: 1000,
         maxRetries: 0,
       })
@@ -129,7 +129,7 @@ describe('SenderService', () => {
 
     // Act & Assert - Should timeout and throw error
     await expect(
-      service.sendWithResponse(mockClient, IntegrationMessagePattern.WHO, { foo: 'bar' } as any, {
+      service.sendWithResponse(mockClient, IntegrationMessagePattern.INFO, { foo: 'bar' } as any, {
         timeoutMs: 50, // Short timeout
         maxRetries: 0,
       })
@@ -144,7 +144,7 @@ describe('SenderService', () => {
     // Act
     const result = await service.sendWithResponse(
       mockClient,
-      IntegrationMessagePattern.WHO,
+      IntegrationMessagePattern.INFO,
       { foo: 'bar' } as any,
       { timeoutMs: 1000, maxRetries: 2 }
     );
@@ -154,7 +154,7 @@ describe('SenderService', () => {
     expect(mockLogger.debug).toHaveBeenCalledWith(
       expect.objectContaining({
         method: expect.stringContaining('sendWithResponse response took'),
-        pattern: IntegrationMessagePattern.WHO,
+        pattern: IntegrationMessagePattern.INFO,
         data: { foo: 'bar' },
         value: successResponse,
       }),

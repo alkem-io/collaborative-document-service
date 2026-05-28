@@ -1,10 +1,8 @@
 import * as Y from 'yjs';
 import { WINSTON_MODULE_NEST_PROVIDER, WinstonLogger } from 'nest-winston';
 import { Inject, Injectable } from '@nestjs/common';
-import { NotProvidedException } from '@common/exceptions';
 import { LogContext } from '@common/enums';
-import { UserInfo } from '../integration/types';
-import { FetchInputData, InfoInputData, SaveInputData, WhoInputData } from '../integration/inputs';
+import { FetchInputData, InfoInputData, SaveInputData } from '../integration/inputs';
 import { InfoOutputData, isFetchErrorData } from '../integration/outputs';
 import { IntegrationService } from '../integration';
 import { FetchException } from './fetch.exception';
@@ -16,32 +14,6 @@ export class UtilService {
     @Inject(WINSTON_MODULE_NEST_PROVIDER) private readonly logger: WinstonLogger,
     private readonly integrationService: IntegrationService
   ) {}
-
-  /**
-   * Fetches user information based on the provided cookie or authorization header.
-   * If both are provided, authorization header takes precedence.
-   * @throws NotProvidedException if neither is provided.
-   * @param opts
-   */
-  public getUserInfo(opts: {
-    cookie?: string;
-    authorization?: string;
-  }): Promise<UserInfo | undefined> {
-    const { cookie, authorization } = opts;
-    // we want to choose the authorization with priority
-    if (authorization) {
-      return this.integrationService.who(new WhoInputData({ authorization }));
-    }
-
-    if (cookie) {
-      return this.integrationService.who(new WhoInputData({ cookie }));
-    }
-
-    throw new NotProvidedException(
-      'Not able to get user info. At least one of: Cookie and Authorization headers needs to be provided',
-      LogContext.INTEGRATION
-    );
-  }
 
   public async getUserAccessToMemo(userId: string, memoId: string): Promise<InfoOutputData> {
     try {
