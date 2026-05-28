@@ -280,6 +280,7 @@ describe('AlkemioAuthenticator', () => {
   describe('connected', () => {
     it('logs the authenticated actor id with the onConnect tag', async () => {
       const data = {
+        documentName: 'doc-1',
         context: {
           authenticatedBy: 'onConnect',
           userInfo: { id: 'actor-uuid-123' },
@@ -289,13 +290,18 @@ describe('AlkemioAuthenticator', () => {
       await authenticator.connected(data);
 
       expect(mockLogger.verbose).toHaveBeenCalledWith(
-        '[onConnect] Actor actor-uuid-123 authenticated',
+        {
+          message: '[onConnect] Actor authenticated and connected',
+          userId: 'actor-uuid-123',
+          documentId: 'doc-1',
+        },
         LogContext.AUTHENTICATION
       );
     });
 
     it('reflects the authenticatedBy tag in the log line', async () => {
       const data = {
+        documentName: 'doc-9',
         context: {
           authenticatedBy: 'onAuthenticate',
           userInfo: { id: 'actor-9' },
@@ -305,7 +311,11 @@ describe('AlkemioAuthenticator', () => {
       await authenticator.connected(data);
 
       expect(mockLogger.verbose).toHaveBeenCalledWith(
-        '[onAuthenticate] Actor actor-9 authenticated',
+        {
+          message: '[onAuthenticate] Actor authenticated and connected',
+          userId: 'actor-9',
+          documentId: 'doc-9',
+        },
         LogContext.AUTHENTICATION
       );
     });

@@ -46,12 +46,28 @@ export class AlkemioAuthenticator extends AbstractAuthenticator {
       // No gateway-stamped identity. Hocuspocus will then call onAuthenticate
       // when the client sends an Auth message — we fail closed there.
       data.connectionConfig.isAuthenticated = false;
+      this.logger.verbose?.(
+        {
+          message:
+            '[onConnect] Anonymous connection — no X-Alkemio-Actor-Id from gateway. Awaiting Auth message or close.',
+          documentId: data.documentName,
+        },
+        LogContext.AUTHENTICATION
+      );
       return Promise.resolve();
     }
 
     const userInfo: UserInfo = { id: actorId };
     data.connectionConfig.isAuthenticated = true;
     data.userInfo = userInfo;
+    this.logger.verbose?.(
+      {
+        message: '[onConnect] Actor authenticated via gateway header',
+        userId: actorId,
+        documentId: data.documentName,
+      },
+      LogContext.AUTHENTICATION
+    );
     return {
       isAuthenticated: true,
       authenticatedBy: 'onConnect',
@@ -94,7 +110,11 @@ export class AlkemioAuthenticator extends AbstractAuthenticator {
         context: { authenticatedBy, userInfo },
       } = data;
       this.logger.verbose?.(
-        `[${authenticatedBy}] Actor ${userInfo!.id} authenticated`,
+        {
+          message: `[${authenticatedBy}] Actor authenticated and connected`,
+          userId: userInfo?.id,
+          documentId: data.documentName,
+        },
         LogContext.AUTHENTICATION
       );
     }

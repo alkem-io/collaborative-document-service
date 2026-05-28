@@ -26,12 +26,28 @@ export class AlkemioAuthorizer extends AbstractAuthorizer {
 
   async onConnect(data: onConnectPayload & onConnectSharedData) {
     if (!data.connectionConfig.isAuthenticated) {
+      this.logger.verbose?.(
+        {
+          message:
+            '[onConnect] Rejected — connection is not authenticated. Authorizer cannot proceed.',
+          documentId: data.documentName,
+        },
+        LogContext.AUTHORIZATION
+      );
       return Promise.reject();
     }
 
     const { documentName: documentId, userInfo } = data;
 
     if (!userInfo) {
+      this.logger.verbose?.(
+        {
+          message:
+            '[onConnect] Rejected — authenticated connection has no userInfo (authenticator contract violation).',
+          documentId,
+        },
+        LogContext.AUTHORIZATION
+      );
       return Promise.reject();
     }
 
@@ -46,6 +62,14 @@ export class AlkemioAuthorizer extends AbstractAuthorizer {
 
   async onAuthenticate(data: WithAuthorizationContext<onAuthenticatePayload>) {
     if (!data.connectionConfig.isAuthenticated) {
+      this.logger.verbose?.(
+        {
+          message:
+            '[onAuthenticate] Rejected — connection is not authenticated. Authorizer cannot proceed.',
+          documentId: data.documentName,
+        },
+        LogContext.AUTHORIZATION
+      );
       return Promise.reject();
     }
 
@@ -59,6 +83,14 @@ export class AlkemioAuthorizer extends AbstractAuthorizer {
     } = data;
 
     if (!userInfo) {
+      this.logger.verbose?.(
+        {
+          message:
+            '[onAuthenticate] Rejected — authenticated connection has no userInfo (authenticator contract violation).',
+          documentId,
+        },
+        LogContext.AUTHORIZATION
+      );
       return Promise.reject();
     }
 
@@ -147,9 +179,10 @@ export class AlkemioAuthorizer extends AbstractAuthorizer {
     if (!result.canRead) {
       this.logger.verbose?.(
         {
-          message: 'User does not have read access to document',
+          message: '[authorize] Forbidden — user lacks read access to document',
           userId,
           documentId,
+          collaboratorCount,
         },
         LogContext.AUTHORIZATION
       );
@@ -160,6 +193,20 @@ export class AlkemioAuthorizer extends AbstractAuthorizer {
         { userId, documentId }
       );
     }
+
+    this.logger.verbose?.(
+      {
+        message: '[authorize] Allowed — user has read access to document',
+        userId,
+        documentId,
+        readOnly: result.readOnly,
+        readOnlyCode: result.readOnlyCode,
+        isMultiUser: result.isMultiUser,
+        maxCollaborators: result.maxCollaborators,
+        collaboratorCount,
+      },
+      LogContext.AUTHORIZATION
+    );
 
     return result;
   }
