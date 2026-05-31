@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@hocuspocus/server':
         specifier: ^3.2.3
-        version: 3.4.4(y-protocols@1.0.6(yjs@13.6.30))(yjs@13.6.30)
+        version: 3.4.4(y-protocols@1.0.6(yjs@13.6.31))(yjs@13.6.31)
       '@nestjs/common':
         specifier: ^11.1.6
         version: 11.1.24(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -49,7 +49,7 @@ importers:
         version: 2.9.0
       yjs:
         specifier: ^13.6.27
-        version: 13.6.30
+        version: 13.6.31
     devDependencies:
       '@commitlint/types':
         specifier: ^19.8.1
@@ -4149,8 +4149,8 @@ packages:
     resolution: {integrity: sha512-PtGEvEP30p7sbIBJKUBjUnqgTVOyMURc4dLo9iNyAJnNIEz9pm88cCXF21w94Kg3k6RXkeZh5DHOGS0qEONvNQ==}
     engines: {node: '>=12'}
 
-  yjs@13.6.30:
-    resolution: {integrity: sha512-vv/9h42eCMC81ZHDFswuu/MKzkl/vyq1BhaNGfHyOonwlG4CJbQF4oiBBJPvfdeCt/PlVDWh7Nov9D34YY09uQ==}
+  yjs@13.6.31:
+    resolution: {integrity: sha512-Eq+5BRfbeGyqGVrTJL3bEcr8gKkxPuyuoHmAwpk52fDb8kOVMrfVSTRPd6yiGgX5Fskb96qCRjzjbRjrL4YEnw==}
     engines: {node: '>=16.0.0', npm: '>=8.0.0'}
 
   yocto-queue@0.1.0:
@@ -4488,7 +4488,7 @@ snapshots:
     dependencies:
       lib0: 0.2.117
 
-  '@hocuspocus/server@3.4.4(y-protocols@1.0.6(yjs@13.6.30))(yjs@13.6.30)':
+  '@hocuspocus/server@3.4.4(y-protocols@1.0.6(yjs@13.6.31))(yjs@13.6.31)':
     dependencies:
       '@hocuspocus/common': 3.4.4
       async-lock: 1.4.1
@@ -4496,8 +4496,8 @@ snapshots:
       kleur: 4.1.5
       lib0: 0.2.117
       ws: 8.20.0
-      y-protocols: 1.0.6(yjs@13.6.30)
-      yjs: 13.6.30
+      y-protocols: 1.0.6(yjs@13.6.31)
+      yjs: 13.6.31
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -8285,10 +8285,10 @@ snapshots:
     dependencies:
       is-wsl: 3.1.0
 
-  y-protocols@1.0.6(yjs@13.6.30):
+  y-protocols@1.0.6(yjs@13.6.31):
     dependencies:
       lib0: 0.2.117
-      yjs: 13.6.30
+      yjs: 13.6.31
 
   yaml@2.9.0: {}
 
@@ -8299,7 +8299,7 @@ snapshots:
       buffer-crc32: 0.2.13
       pend: 1.2.0
 
-  yjs@13.6.30:
+  yjs@13.6.31:
     dependencies:
       lib0: 0.2.117
 
