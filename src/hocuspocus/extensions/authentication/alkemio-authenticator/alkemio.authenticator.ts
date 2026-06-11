@@ -132,9 +132,11 @@ function extractActorIdHeader(
   const raw = headers[HEADER_ACTOR_ID_LOWER];
   const value = Array.isArray(raw) ? raw[0] : raw;
 
-  if (typeof value !== 'string' || value.length === 0) {
+  if (typeof value !== 'string') {
     return undefined;
   }
 
-  return value;
+  // A whitespace-only id means gateway misconfiguration — treat as absent.
+  const trimmed = value.trim();
+  return trimmed.length === 0 ? undefined : trimmed;
 }

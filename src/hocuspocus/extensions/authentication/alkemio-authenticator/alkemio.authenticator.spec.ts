@@ -88,6 +88,31 @@ describe('AlkemioAuthenticator', () => {
       expect(result).toBeUndefined();
     });
 
+    it('treats whitespace-only actor header as absent', async () => {
+      const data = {
+        requestHeaders: { 'x-alkemio-actor-id': '   ' },
+        connectionConfig: {},
+        documentName: 'doc1',
+      } as any;
+
+      const result = await authenticator.onConnect(data);
+
+      expect(data.connectionConfig.isAuthenticated).toBe(false);
+      expect(result).toBeUndefined();
+    });
+
+    it('trims surrounding whitespace from the actor id', async () => {
+      const data = {
+        requestHeaders: { 'x-alkemio-actor-id': '  actor-uuid-123  ' },
+        connectionConfig: {},
+        documentName: 'doc1',
+      } as any;
+
+      await authenticator.onConnect(data);
+
+      expect(data.userInfo).toEqual({ id: 'actor-uuid-123' });
+    });
+
     it('treats missing requestHeaders as absent', async () => {
       const data = {
         requestHeaders: undefined,
