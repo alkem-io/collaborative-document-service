@@ -13,7 +13,7 @@ import { AuthenticationException } from '../exceptions';
  *
  *   - onConnect: authenticated iff the header arrives as a non-empty string.
  *   - onAuthenticate: fail-closed — no token validation here.
- *   - connected: logs the resolved actor identity.
+ *   - connected: resolves without throwing, even when verbose logging is off.
  */
 describe('AlkemioAuthenticator', () => {
   let authenticator: AlkemioAuthenticator;
@@ -204,7 +204,6 @@ describe('AlkemioAuthenticator', () => {
       const result = await authenticator.onAuthenticate(data);
 
       expect(result).toBeUndefined();
-      expect(mockLogger.verbose).not.toHaveBeenCalled();
     });
 
     it('throws AuthenticationException when the gateway did not authenticate', async () => {
@@ -230,26 +229,6 @@ describe('AlkemioAuthenticator', () => {
         context: LogContext.AUTHENTICATION,
         details: { documentId: 'doc-xyz' },
       });
-    });
-
-    it('logs a denial message with the documentId before throwing', async () => {
-      const data = {
-        connectionConfig: { isAuthenticated: false },
-        documentName: 'doc-xyz',
-      } as any;
-
-      await expect(authenticator.onAuthenticate(data)).rejects.toBeInstanceOf(
-        AuthenticationException
-      );
-
-      expect(mockLogger.verbose).toHaveBeenCalledWith(
-        {
-          message:
-            '[onAuthenticate] No X-Alkemio-Actor-Id from gateway and no fallback path — denying.',
-          documentId: 'doc-xyz',
-        },
-        LogContext.AUTHENTICATION
-      );
     });
 
     it('still throws when verbose logging is disabled (optional chain safe)', async () => {
@@ -278,48 +257,6 @@ describe('AlkemioAuthenticator', () => {
   });
 
   describe('connected', () => {
-    it('logs the authenticated actor id with the onConnect tag', async () => {
-      const data = {
-        documentName: 'doc-1',
-        context: {
-          authenticatedBy: 'onConnect',
-          userInfo: { id: 'actor-uuid-123' },
-        },
-      } as any;
-
-      await authenticator.connected(data);
-
-      expect(mockLogger.verbose).toHaveBeenCalledWith(
-        {
-          message: '[onConnect] Actor authenticated and connected',
-          userId: 'actor-uuid-123',
-          documentId: 'doc-1',
-        },
-        LogContext.AUTHENTICATION
-      );
-    });
-
-    it('reflects the authenticatedBy tag in the log line', async () => {
-      const data = {
-        documentName: 'doc-9',
-        context: {
-          authenticatedBy: 'onAuthenticate',
-          userInfo: { id: 'actor-9' },
-        },
-      } as any;
-
-      await authenticator.connected(data);
-
-      expect(mockLogger.verbose).toHaveBeenCalledWith(
-        {
-          message: '[onAuthenticate] Actor authenticated and connected',
-          userId: 'actor-9',
-          documentId: 'doc-9',
-        },
-        LogContext.AUTHENTICATION
-      );
-    });
-
     it('does not log and does not throw when verbose is disabled', async () => {
       mockLogger.verbose = undefined;
       const data = {

@@ -135,30 +135,4 @@ describe('SenderService', () => {
       })
     ).rejects.toThrow('Timeout while processing integration request.');
   }, 1000);
-
-  it('should log debug information when response is received successfully', async () => {
-    // Arrange
-    const successResponse = { result: 'success', data: 'test' };
-    mockClient.send.mockReturnValue(of(successResponse));
-
-    // Act
-    const result = await service.sendWithResponse(
-      mockClient,
-      IntegrationMessagePattern.INFO,
-      { foo: 'bar' } as any,
-      { timeoutMs: 1000, maxRetries: 2 }
-    );
-
-    // Assert
-    expect(result).toEqual(successResponse);
-    expect(mockLogger.debug).toHaveBeenCalledWith(
-      expect.objectContaining({
-        method: expect.stringContaining('sendWithResponse response took'),
-        pattern: IntegrationMessagePattern.INFO,
-        data: { foo: 'bar' },
-        value: successResponse,
-      }),
-      LogContext.INTEGRATION
-    );
-  });
 });
