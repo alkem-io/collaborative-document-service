@@ -9,13 +9,11 @@ import {
   IntegrationEventPattern,
   IntegrationMessagePattern,
   RMQConnectionError,
-  UserInfo,
 } from './types';
 import {
   FetchInputData,
   InfoInputData,
   SaveInputData,
-  WhoInputData,
   MemoContributionsInputData,
 } from './inputs';
 import {
@@ -110,37 +108,6 @@ export class IntegrationService implements OnModuleInit, OnModuleDestroy {
       )
       .then(resp => resp.healthy)
       .catch(() => false);
-  }
-
-  public async who(data: WhoInputData) {
-    if (!this.client) {
-      throw new Error('Connection was not established. Send failed.');
-    }
-
-    try {
-      const id = await this.senderService.sendWithResponse<string, WhoInputData>(
-        this.client,
-        IntegrationMessagePattern.WHO,
-        data,
-        this.defaultRequestConfig
-      );
-
-      if (!id) {
-        throw new Error('WHO response missing id');
-      }
-
-      return { id };
-    } catch (e: any) {
-      this.logger.error(
-        {
-          message: 'Who request failed',
-          error: e,
-        },
-        e?.stack,
-        LogContext.INTEGRATION
-      );
-      return undefined;
-    }
   }
 
   public async info(data: InfoInputData) {

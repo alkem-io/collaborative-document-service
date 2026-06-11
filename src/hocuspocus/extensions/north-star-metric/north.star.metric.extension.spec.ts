@@ -13,15 +13,9 @@ describe('NorthStarMetric', () => {
   let northStarMetricService: NorthStarMetricService;
   let configService: ConfigService;
 
-  const mockUserInfo: UserInfo = {
-    id: 'user-123',
-    email: 'test@example.com',
-  };
+  const mockUserInfo: UserInfo = { id: 'user-123' };
 
-  const mockUserInfo2: UserInfo = {
-    id: 'user-456',
-    email: 'test2@example.com',
-  };
+  const mockUserInfo2: UserInfo = { id: 'user-456' };
 
   const createMockDocument = (name: string): Document => {
     return {
