@@ -1,5 +1,7 @@
 # Stage 1: Build the application
-FROM node:22-slim AS build
+# Runs on the builder's native arch (avoids QEMU segfaults when cross-building arm64).
+# Safe because the build output and all production dependencies are pure JS.
+FROM --platform=$BUILDPLATFORM node:22-slim AS build
 
 WORKDIR /usr/src/app
 
