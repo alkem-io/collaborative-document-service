@@ -1,3 +1,4 @@
+export * from './north.star.metric.extension';
 export * from './north.star.metric.factory';
 export * from './north.star.metric.module';
 export * from './north.star.metric.service';

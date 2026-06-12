@@ -1,0 +1,14 @@
+import { ReadOnlyCode } from '../extensions/authorization/types';
+import { StatelessBaseMessage } from './stateless.base.message.type';
+
+export interface StatelessReadOnlyStateMessage extends StatelessBaseMessage {
+  event: 'read-only-state';
+  readOnly: boolean;
+  readOnlyCode?: ReadOnlyCode;
+}
+
+export const isStatelessReadOnlyStateMessage = (
+  data: StatelessBaseMessage
+): data is StatelessReadOnlyStateMessage => {
+  return data.event === 'read-only-state';
+};
