@@ -6,7 +6,7 @@
   "license": "EUPL-1.2",
   "main": "dist/main.js",
   "type": "module",
-  "packageManager": "pnpm@10.34.3",
+  "packageManager": "pnpm@10.34.4",
   "scripts": {
     "build": "node --run build:clean && nest build --path tsconfig.prod.json",
     "build:clean": "rimraf dist; exit 0",
@@ -55,7 +55,7 @@
   },
   "volta": {
     "node": "22.22.3",
-    "pnpm": "10.34.3"
+    "pnpm": "10.34.4"
   },
   "devDependencies": {
     "@commitlint/types": "^19.8.1",
