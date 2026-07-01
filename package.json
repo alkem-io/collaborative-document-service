@@ -54,7 +54,7 @@
     "pnpm": ">=9"
   },
   "volta": {
-    "node": "22.22.3",
+    "node": "22.23.1",
     "pnpm": "10.34.4"
   },
   "devDependencies": {
