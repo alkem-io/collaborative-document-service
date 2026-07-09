@@ -91,7 +91,7 @@ describe('SenderService', () => {
         timeoutMs: 1000,
         maxRetries: 0,
       })
-    ).rejects.toThrow('\'undefined\' error caught while processing integration request.');
+    ).rejects.toThrow("'undefined' error caught while processing integration request.");
   });
 
   it('should handle null errors and throw an appropriate message', async () => {
@@ -103,7 +103,7 @@ describe('SenderService', () => {
         timeoutMs: 1000,
         maxRetries: 0,
       })
-    ).rejects.toThrow('\'null\' error caught while processing integration request.');
+    ).rejects.toThrow("'null' error caught while processing integration request.");
   });
 
   it('should handle unknown error types and throw an appropriate message', async () => {

@@ -5,17 +5,8 @@ import { ConfigService } from '@nestjs/config';
 import { LogContext } from '@common/enums';
 import { ConfigType } from '@src/config';
 import { NotInitializedException } from '@common/exceptions';
-import {
-  IntegrationEventPattern,
-  IntegrationMessagePattern,
-  RMQConnectionError,
-} from './types';
-import {
-  FetchInputData,
-  InfoInputData,
-  SaveInputData,
-  MemoContributionsInputData,
-} from './inputs';
+import { IntegrationEventPattern, IntegrationMessagePattern, RMQConnectionError } from './types';
+import { FetchInputData, InfoInputData, SaveInputData, MemoContributionsInputData } from './inputs';
 import {
   FetchErrorCodes,
   FetchErrorData,

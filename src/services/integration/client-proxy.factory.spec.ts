@@ -122,9 +122,10 @@ describe('clientProxyFactory', () => {
       expect(ClientProxyFactory.create).toHaveBeenCalledWith(
         expect.objectContaining({
           options: expect.objectContaining({
-          urls: [expect.objectContaining({ heartbeat: 180 })], // 3x the configured value
-        }),
-      }));
+            urls: [expect.objectContaining({ heartbeat: 180 })], // 3x the configured value
+          }),
+        })
+      );
     });
   });
 

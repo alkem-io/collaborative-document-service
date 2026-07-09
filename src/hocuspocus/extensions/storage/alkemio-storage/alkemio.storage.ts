@@ -26,9 +26,7 @@ export class AlkemioStorage extends AbstractStorage {
    * Called after onAuthenticate
    * @throws if the document cannot be loaded
    */
-  public async onLoadDocument({
-    documentName: documentId,
-  }: onLoadDocumentPayload): Promise<Doc> {
+  public async onLoadDocument({ documentName: documentId }: onLoadDocumentPayload): Promise<Doc> {
     try {
       return await this.storageService.loadDocument(documentId);
     } catch (error: any) {

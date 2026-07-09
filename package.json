@@ -18,7 +18,8 @@
     "start:dev": "nest start --watch",
     "test": "vitest run --config test/config/vitest.config.ts",
     "test:ui": "vitest --ui --config test/config/vitest.config.ts",
-    "test:coverage": "vitest run --coverage --config test/config/vitest.config.ts && open-cli coverage/index.html"
+    "test:coverage": "vitest run --coverage --config test/config/vitest.config.ts && open-cli coverage/index.html",
+    "typecheck:native": "tsc -p tsconfig.json --noEmit"
   },
   "keywords": [
     "collaboration",
@@ -66,6 +67,7 @@
     "@swc/cli": "^0.8.0",
     "@swc/core": "^1.13.5",
     "@types/node": "^22.18.1",
+    "@typescript/native": "npm:typescript@7.0.2",
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",
     "@vitest/coverage-v8": "3.2.7",
@@ -84,7 +86,7 @@
     "ts-loader": "^9.5.4",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.20.5",
-    "typescript": "^5.9.2",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
     "unplugin-swc": "^1.5.1",
     "vite": "5.4.21",
     "vite-tsconfig-paths": "5.1.4",

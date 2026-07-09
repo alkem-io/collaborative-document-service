@@ -1,7 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
-    "baseUrl": ".",
     "module": "esnext",
     "target": "esnext",
     "moduleResolution": "Bundler",
@@ -17,10 +16,11 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "declaration": true,
+    "types": ["node"],
     "paths": {
-      "@src/*": ["src/*"],
-      "@test/*": ["test/*"],
-      "@common/*": ["src/common/*"]
+      "@src/*": ["./src/*"],
+      "@test/*": ["./test/*"],
+      "@common/*": ["./src/common/*"]
     },
   },
   "exclude": ["node_modules", "dist"]

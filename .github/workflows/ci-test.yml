@@ -25,5 +25,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Typecheck (native)
+        run: pnpm run typecheck:native
+
       - name: Test
         run: pnpm run test

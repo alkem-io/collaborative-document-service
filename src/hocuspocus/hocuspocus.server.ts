@@ -13,7 +13,10 @@ import {
   ALKEMIO_STORAGE_EXTENSION,
   AlkemioStorage,
 } from '@src/hocuspocus/extensions/storage/alkemio-storage';
-import { NorthStarMetric, NORTH_STAR_METRIC_EXTENSION } from '@src/hocuspocus/extensions/north-star-metric';
+import {
+  NorthStarMetric,
+  NORTH_STAR_METRIC_EXTENSION,
+} from '@src/hocuspocus/extensions/north-star-metric';
 import { ConfigType } from '../config';
 import { sortExtensions } from './sort.extensions';
 
