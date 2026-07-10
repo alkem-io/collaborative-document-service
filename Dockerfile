@@ -5,7 +5,7 @@ FROM --platform=$BUILDPLATFORM node:22-slim AS build
 
 WORKDIR /usr/src/app
 
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml .npmrc ./
 
 # Use pnpm with the lockfile to install all dependencies for building
 RUN corepack enable pnpm && pnpm install --frozen-lockfile

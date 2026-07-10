@@ -25,8 +25,8 @@ describe('AlkemioStorage', () => {
         },
       ],
     })
-        .useMocker(defaultMockerFactory)
-        .compile();
+      .useMocker(defaultMockerFactory)
+      .compile();
 
     storage = module.get<AlkemioStorage>(AlkemioStorage);
   });

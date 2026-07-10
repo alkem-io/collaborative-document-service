@@ -409,7 +409,9 @@ describe('AlkemioAuthorizer', () => {
         (authorizer as any).connected = connectedSpy;
 
         // Act & Assert
-        await expect(authorizer.onConnect(mockOnConnectData)).rejects.toThrow('Authorization failed');
+        await expect(authorizer.onConnect(mockOnConnectData)).rejects.toThrow(
+          'Authorization failed'
+        );
         expect(connectedSpy).not.toHaveBeenCalled();
       });
     });

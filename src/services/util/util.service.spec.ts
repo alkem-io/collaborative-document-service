@@ -8,7 +8,15 @@ import { IntegrationService } from '../integration';
 import { LogContext } from '@common/enums';
 import { FetchException } from './fetch.exception';
 import { FetchInputData, InfoInputData, SaveInputData } from '../integration/inputs';
-import { InfoOutputData, FetchOutputData, FetchContentData, FetchErrorData, FetchErrorCodes, SaveOutputData, SaveContentData } from '../integration/outputs';
+import {
+  InfoOutputData,
+  FetchOutputData,
+  FetchContentData,
+  FetchErrorData,
+  FetchErrorCodes,
+  SaveOutputData,
+  SaveContentData,
+} from '../integration/outputs';
 import * as transformModule from './transform';
 
 // Mock the transform module
@@ -55,16 +63,14 @@ describe('UtilService', () => {
     describe('failing paths', () => {
       it('should return default InfoOutputData when integrationService.info throws an error', async () => {
         // Arrange
-        const error = new Error('Integration service error')
+        const error = new Error('Integration service error');
         mockIntegrationService.info.mockRejectedValue(error);
 
         // Act
         const result = await service.getUserAccessToMemo(userId, memoId);
 
         // Assert
-        expect(mockIntegrationService.info).toHaveBeenCalledWith(
-          new InfoInputData(userId, memoId)
-        );
+        expect(mockIntegrationService.info).toHaveBeenCalledWith(new InfoInputData(userId, memoId));
         expect(mockLogger.error).toHaveBeenCalledWith(
           {
             message: 'Received error while getting user access to Memo',
@@ -111,9 +117,7 @@ describe('UtilService', () => {
         const result = await service.getUserAccessToMemo(userId, memoId);
 
         // Assert
-        expect(mockIntegrationService.info).toHaveBeenCalledWith(
-          new InfoInputData(userId, memoId)
-        );
+        expect(mockIntegrationService.info).toHaveBeenCalledWith(new InfoInputData(userId, memoId));
         expect(result).toEqual(expectedResult);
       });
     });
@@ -157,9 +161,7 @@ describe('UtilService', () => {
         await expect(service.fetchMemo(documentId)).rejects.toThrow(FetchException);
         await expect(service.fetchMemo(documentId)).rejects.toThrow('Failed to fetch memo');
 
-        expect(mockIntegrationService.fetch).toHaveBeenCalledWith(
-          new FetchInputData(documentId)
-        );
+        expect(mockIntegrationService.fetch).toHaveBeenCalledWith(new FetchInputData(documentId));
       });
     });
 
@@ -179,9 +181,7 @@ describe('UtilService', () => {
         const result = await service.fetchMemo(documentId);
 
         // Assert
-        expect(mockIntegrationService.fetch).toHaveBeenCalledWith(
-          new FetchInputData(documentId)
-        );
+        expect(mockIntegrationService.fetch).toHaveBeenCalledWith(new FetchInputData(documentId));
         expect(transformModule.binaryStateV2ToYjsDoc).toHaveBeenCalledWith(expectedBuffer);
         expect(result).toBe(mockDoc);
       });
