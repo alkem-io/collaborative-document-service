@@ -25,5 +25,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # package.json has defined a `lint` script all along but no workflow ran it,
+      # so lint regressions could not fail CI. Added by workspace#036-distroless-wave-1
+      # so this wave does not leave that gap behind it.
+      - name: Lint
+        run: pnpm run lint
+
       - name: Build
         run: pnpm run build
