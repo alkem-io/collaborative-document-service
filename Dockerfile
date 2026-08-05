@@ -69,12 +69,16 @@ COPY . .
 
 # `build` = `node --run build:clean && nest build --path tsconfig.prod.json`.
 # NOTE: nest-cli.json uses the SWC builder, which does NOT honor
-# tsconfig.prod.json's exclude list — spec files were being compiled into
-# dist/ despite it. .swcrc's top-level "exclude" is what actually keeps
-# **/*.spec.ts and **/*.test.ts out of the build; the harness asserts
-# dist/ is test-free so a regression fails CI rather than shipping.
+# tsconfig.prod.json's exclude list, so spec files compile into dist/.
+# An .swcrc "exclude" is NOT an option: vitest transforms the spec files
+# through the same .swcrc, so excluding them there kills the entire test
+# suite ("cannot process file because it's ignored by .swcrc", 171 -> 0).
+# Instead, prune the compiled test artifacts from dist/ after the build —
+# the smoke harness asserts dist/ is test-free so a regression fails CI.
 # NOTE: no `pnpm prune --prod` here any more — see coupled change 2 above.
-RUN pnpm run build
+RUN pnpm run build \
+ && find dist \( -name '*.spec.js' -o -name '*.spec.js.map' \
+                 -o -name '*.test.js' -o -name '*.test.js.map' \) -delete
 
 # Stage 2: resolve production-only dependencies from the lockfile
 FROM --platform=$BUILDPLATFORM node:22.23.1-trixie-slim@sha256:e6d9a389d34ff9678438af985c9913fbd1eb6ed36e80fea56644f4b4f6dd70ba AS proddeps

@@ -1,6 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/swcrc",
-  "exclude": [".*\\.spec\\.ts$", ".*\\.test\\.ts$"],
   "sourceMaps": true,
   "jsc": {
     "parser": {
