@@ -203,6 +203,30 @@ NATIVE_COUNT="$(run_node -e "
   console.log(n);
 ")"
 echo "  native *.node addon count = $NATIVE_COUNT (0 expected: pure-JS production tree)"
+# Assert, don't just report: both build stages run under
+# --platform=$BUILDPLATFORM (cross-compile shape), so a native addon appearing
+# in the production tree would be built for the BUILD host's architecture and
+# crash at require() on the other release arch. Zero is a contract, not an
+# observation.
+[ "$NATIVE_COUNT" = "0" ] ||
+  fail "native addon(s) found in the production tree ($NATIVE_COUNT) — both builder stages run under --platform=\$BUILDPLATFORM, so any native addon is compiled for the build host's arch and breaks the other release architecture"
+
+# dist/ must be test-free: nest's SWC builder ignores tsconfig.prod.json's
+# exclude list, so this is enforced by .swcrc's top-level "exclude" — and
+# asserted here so a builder-config regression fails CI instead of shipping
+# test code (which imports vitest/@nestjs/testing, absent from prod deps).
+SPEC_IN_DIST="$(run_node -e "
+  const fs=require('fs'), p=require('path');
+  let n=0;
+  (function w(d){ for (const e of fs.readdirSync(d,{withFileTypes:true})) {
+    const f=p.join(d,e.name);
+    if (e.isDirectory()) w(f); else if (/\.(spec|test)\.js(\.map)?$/.test(e.name)) n++;
+  }})('/usr/src/app/dist');
+  console.log(n);
+")"
+[ "$SPEC_IN_DIST" = "0" ] ||
+  fail "dist/ ships $SPEC_IN_DIST spec/test artifact(s) — .swcrc's exclude is not taking effect"
+pass "dist/ is test-free (0 spec/test artifacts) and production tree is pure JS (0 native addons)"
 
 for m in yjs @hocuspocus/server @nestjs/core @nestjs/platform-fastify amqplib winston yaml; do
   OUT="$(run_node -e "

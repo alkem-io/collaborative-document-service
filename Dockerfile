@@ -68,7 +68,11 @@ RUN corepack enable pnpm && pnpm install --frozen-lockfile
 COPY . .
 
 # `build` = `node --run build:clean && nest build --path tsconfig.prod.json`.
-# tsconfig.prod.json excludes **/*.spec.ts and **/*.test.ts, so dist/ is test-free.
+# NOTE: nest-cli.json uses the SWC builder, which does NOT honor
+# tsconfig.prod.json's exclude list — spec files were being compiled into
+# dist/ despite it. .swcrc's top-level "exclude" is what actually keeps
+# **/*.spec.ts and **/*.test.ts out of the build; the harness asserts
+# dist/ is test-free so a regression fails CI rather than shipping.
 # NOTE: no `pnpm prune --prod` here any more — see coupled change 2 above.
 RUN pnpm run build
 
