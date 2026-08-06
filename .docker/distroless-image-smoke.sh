@@ -96,11 +96,15 @@ pass "no in-place 'pnpm prune --prod' (prod deps come from their own stage)"
 # --- user / entrypoint / CMD ----------------------------------------------
 echo "-- runtime identity --"
 USER_ID="$(docker inspect "$IMAGE" --format '{{.Config.User}}')"
-# This repo deliberately uses the NAME form (`USER nonroot`), unlike notifications
-# and whiteboard-collaboration-service which use numeric 65532. Both are accepted
-# here; the distroless `nonroot` account IS uid 65532 (asserted below).
-[ "$USER_ID" = "65532" ] || [ "$USER_ID" = "nonroot" ] ||
-  fail "expected user 65532/nonroot, got '$USER_ID'"
+# Must be NUMERIC: the kubelet cannot resolve a non-numeric image user, so a
+# name form (`nonroot`) makes any Pod with `runAsNonRoot: true` fail admission
+# with "image has non-numeric user (nonroot), cannot verify user is non-root".
+# Proven on k8s-hetzner-sandbox during 036 verification — hence this gate
+# rejects the name form outright rather than accepting either spelling.
+case "$USER_ID" in
+  65532|65532:65532) ;;
+  *) fail "expected numeric user 65532 or 65532:65532, got '$USER_ID' (a non-numeric user breaks runAsNonRoot admission)" ;;
+esac
 pass "configured user is '$USER_ID'"
 
 # Assert the EFFECTIVE uid, not just the label — `nonroot` must really be 65532.
