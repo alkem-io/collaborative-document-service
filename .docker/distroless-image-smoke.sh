@@ -1,0 +1,312 @@
+#!/usr/bin/env bash
+# workspace#036-distroless-wave-1 (sub-wave W1b) — persisted image regression.
+# epic alkem-io/infrastructure-operations#2499
+#
+# Mechanically asserts the collaborative-document-service runtime-image contract.
+# This slice made THREE coupled changes; each has a dedicated assertion group so a
+# regression in any one of them fails loudly rather than degrading silently:
+#
+#   1. DE-FLOAT  -> "Dockerfile pins" group: every FROM carries an @sha256: digest.
+#                   This is a HARD FAILURE, not a warning — it is the specific
+#                   regression that reintroduces `FROM node:22-slim`.
+#   2. SPLIT     -> "prod-deps split" group: dev-only packages are absent from the
+#                   runtime node_modules, proving the tree was built production-only
+#                   rather than pruned in place.
+#   3. RETAG     -> covered by the trivy gate in CI, not here.
+#
+# Plus the baseline distroless contract: nonroot user, no shell, no package
+# manager, no source tree, the process's own dependencies actually load, and
+# config.yml (read at boot) is present.
+#
+# Usage:
+#   .docker/distroless-image-smoke.sh <image[:tag]> [baseline_size_bytes]
+#
+# Baseline default 58200576 bytes = `docker save | wc -c` of the pre-change image
+# (single-stage builder on floating node:22-slim + distroless nodejs22-debian12),
+# built from this repo at 036 branch point and measured 2026-08-05.
+#
+# NOTE ON THE SIZE BUDGET: unlike workspace#026 (which moved a fat node:slim
+# runtime to distroless and mandated >=40% reduction), this repo was ALREADY
+# distroless. The three changes here are reproducibility, build hygiene and CVE
+# posture — not size. `pnpm prune --prod` already removed devDependencies, so no
+# large reduction is expected or required. The gate below therefore asserts NO
+# REGRESSION (image must not grow beyond a small tolerance), which is the property
+# that actually matters for this slice.
+set -euo pipefail
+
+IMAGE="${1:?usage: distroless-image-smoke.sh <image> [baseline_size_bytes]}"
+# Baseline = the pre-036 debian12 image, measured the SAME way as the value
+# compared against it (docker history layer sum). An earlier constant of
+# 58,200,576 came from `docker inspect .Size` on a containerd-snapshotter
+# daemon, which counts only layers UNIQUE to that image — it under-reports a
+# shared base by ~3x. CI's daemon reports the full size, so a correct image
+# "grew 207%" against that phantom baseline. Measured truth: baseline 267 MB,
+# this image 274 MB (+2.6%).
+BASELINE_IMAGE_SIZE_BYTES="${2:-267000000}"
+# Allow +5%: the runtime OS moved debian12 -> debian13 and its base layer size is
+# not under this repo's control. Growth beyond that is a real regression.
+MAX_GROWTH_PCT=5
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+DOCKERFILE="$REPO_ROOT/Dockerfile"
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
+pass() {
+  echo "PASS: $*"
+}
+
+run_node() {
+  docker run --rm --entrypoint /nodejs/bin/node "$IMAGE" "$@"
+}
+
+# Returns "true"/"false" for the existence of a path inside the image.
+exists_in_image() {
+  run_node -e "console.log(require('fs').existsSync(process.argv[1]))" "$1"
+}
+
+echo "== distroless-image-smoke: $IMAGE =="
+
+# --- CHANGE 1 (de-float): every FROM must be digest-pinned -----------------
+# Hard gate. Checked against the Dockerfile on disk, since a floating base tag is
+# not recoverable from the built image's metadata.
+echo "-- Dockerfile pins --"
+[ -f "$DOCKERFILE" ] || fail "Dockerfile not found at $DOCKERFILE"
+
+UNPINNED="$(grep -E '^\s*FROM ' "$DOCKERFILE" | grep -v '@sha256:' || true)"
+if [ -n "$UNPINNED" ]; then
+  echo "$UNPINNED" >&2
+  fail "every FROM must be digest-pinned (@sha256:) — floating base tag(s) found above"
+fi
+pass "all FROM lines are digest-pinned"
+
+FROM_COUNT="$(grep -cE '^\s*FROM ' "$DOCKERFILE")"
+[ "$FROM_COUNT" -ge 3 ] ||
+  fail "expected >=3 stages (build + proddeps + runtime), found $FROM_COUNT"
+pass "Dockerfile has $FROM_COUNT stages (build + proddeps + runtime)"
+
+grep -qE '^\s*FROM .*distroless/nodejs22-debian13' "$DOCKERFILE" ||
+  fail "runtime stage must be distroless nodejs22-debian13 (change 3: retag)"
+pass "runtime base is distroless nodejs22-debian13"
+
+# Match executable instructions only — comment lines legitimately mention the
+# removed command when explaining why it is gone.
+if grep -E '^\s*(RUN|CMD|ENTRYPOINT)\b' "$DOCKERFILE" | grep -q 'pnpm prune'; then
+  fail "'pnpm prune --prod' is back — the prod-deps stage should make it unnecessary (change 2)"
+fi
+pass "no in-place 'pnpm prune --prod' (prod deps come from their own stage)"
+
+# --- user / entrypoint / CMD ----------------------------------------------
+echo "-- runtime identity --"
+USER_ID="$(docker inspect "$IMAGE" --format '{{.Config.User}}')"
+# Must be NUMERIC: the kubelet cannot resolve a non-numeric image user, so a
+# name form (`nonroot`) makes any Pod with `runAsNonRoot: true` fail admission
+# with "image has non-numeric user (nonroot), cannot verify user is non-root".
+# Proven on k8s-hetzner-sandbox during 036 verification — hence this gate
+# rejects the name form outright rather than accepting either spelling.
+case "$USER_ID" in
+  65532|65532:65532) ;;
+  *) fail "expected numeric user 65532 or 65532:65532, got '$USER_ID' (a non-numeric user breaks runAsNonRoot admission)" ;;
+esac
+pass "configured user is '$USER_ID'"
+
+# Assert the EFFECTIVE uid, not just the label — `nonroot` must really be 65532.
+EFFECTIVE_UID="$(run_node -e "console.log(process.getuid())")"
+[ "$EFFECTIVE_UID" = "65532" ] ||
+  fail "expected effective UID 65532, got '$EFFECTIVE_UID'"
+pass "effective UID is 65532 (non-root)"
+
+ENTRYPOINT_JSON="$(docker inspect "$IMAGE" --format '{{json .Config.Entrypoint}}')"
+echo "$ENTRYPOINT_JSON" | grep -q '/nodejs/bin/node' ||
+  fail "expected distroless node entrypoint, got $ENTRYPOINT_JSON"
+pass "entrypoint is the distroless node binary"
+
+CMD_JSON="$(docker inspect "$IMAGE" --format '{{json .Config.Cmd}}')"
+[ "$CMD_JSON" = '["dist/main.js"]' ] || fail "expected CMD [\"dist/main.js\"], got $CMD_JSON"
+pass "CMD is [\"dist/main.js\"]"
+
+# --- no shell / no package manager -----------------------------------------
+# Sweep every PATH-shaped directory instead of probing a fixed denylist of
+# binary names: distroless ships /bin, /sbin, /usr/bin, /usr/sbin (and has no
+# /usr/local/bin or /busybox) EMPTY, so ANY entry appearing in one of them —
+# a shell, a package manager, busybox, anything — is a regression. This
+# closes the two holes the review proved in the earlier checks: (a) an
+# exit-status probe read working binaries as absent (apk with no args exits
+# non-zero), and (b) a fixed path list missed /busybox/sh, where Google's
+# :debug variants actually put the shell. lstat/readdir needs no exec
+# permission and sees dangling symlinks.
+FORBIDDEN="$(run_node -e "
+const fs = require('fs');
+const dirs = ['/bin','/sbin','/usr/bin','/usr/sbin','/usr/local/bin','/usr/local/sbin','/busybox'];
+const hits = [];
+for (const d of dirs) {
+  let entries = [];
+  try { entries = fs.readdirSync(d); } catch { continue; } // absent dir is fine
+  for (const e of entries) hits.push(d + '/' + e);
+}
+console.log(hits.join(','));
+")"
+[ -z "$FORBIDDEN" ] || fail "unexpected executables in runtime image PATH dirs: $FORBIDDEN"
+pass "PATH directories are empty (no shell / package manager / any binary)"
+
+# --- no source tree, no dev tooling in the image ---------------------------
+echo "-- image contents --"
+[ "$(exists_in_image /usr/src/app/src)" = "false" ] ||
+  fail "expected no src/ TypeScript tree in the runtime image"
+pass "no src/ TypeScript tree"
+
+[ "$(exists_in_image /usr/src/app/test)" = "false" ] ||
+  fail "expected no test/ tree in the runtime image"
+pass "no test/ tree"
+
+for m in ts-node tsx pnpm; do
+  [ "$(exists_in_image "/usr/src/app/node_modules/$m")" = "false" ] ||
+    fail "expected no $m in node_modules"
+done
+pass "no ts-node / tsx / pnpm in node_modules"
+
+# config.yml is read at boot by the config loader — its absence is a boot failure.
+[ "$(exists_in_image /usr/src/app/config.yml)" = "true" ] ||
+  fail "config.yml is missing — the service reads it at startup"
+pass "config.yml is present"
+
+# --- CHANGE 2 (prod-deps split): dev-only packages must be absent ----------
+# Every name below is verified to live in devDependencies in package.json before
+# being asserted absent, so this cannot silently pass against a moved dependency.
+echo "-- prod-deps split --"
+DEV_ONLY_CHECKED=()
+for m in vitest eslint rimraf "@nestjs/cli" "@nestjs/testing" "@swc/core" "@swc/cli" \
+         vite ts-loader tsconfig-paths unplugin-swc "@types/node" "@vitest/ui"; do
+  if node -e "
+    const p = require('$REPO_ROOT/package.json');
+    const dev = Object.keys(p.devDependencies || {});
+    const prod = Object.keys(p.dependencies || {});
+    if (!dev.includes('$m') || prod.includes('$m')) process.exit(1);
+  " 2>/dev/null; then
+    [ "$(exists_in_image "/usr/src/app/node_modules/$m")" = "false" ] ||
+      fail "dev-only package '$m' is present in the runtime node_modules — the prod-deps split did not take effect"
+    DEV_ONLY_CHECKED+=("$m")
+  else
+    echo "  note: skipping '$m' — not a pure devDependency in package.json"
+  fi
+done
+[ "${#DEV_ONLY_CHECKED[@]}" -ge 5 ] ||
+  fail "verified too few dev-only packages (${#DEV_ONLY_CHECKED[@]}); the assertion is not meaningful"
+pass "dev-only packages absent from runtime node_modules: ${DEV_ONLY_CHECKED[*]}"
+
+# --- dependency load sentinels --------------------------------------------
+# `bufferutil` and `utf-8-validate` are ws's OPTIONAL native accelerators. They are
+# NOT installed in this image (verified: the production tree contains zero *.node
+# binaries), so asserting them would be a false gate. Per CDS-8 we substitute the
+# real runtime-critical dependencies and record the substitution here.
+echo "-- dependency load sentinels --"
+NATIVE_COUNT="$(run_node -e "
+  const fs=require('fs'), p=require('path');
+  let n=0;
+  (function w(d){ for (const e of fs.readdirSync(d,{withFileTypes:true})) {
+    const f=p.join(d,e.name);
+    if (e.isDirectory()) w(f); else if (e.name.endsWith('.node')) n++;
+  }})('/usr/src/app/node_modules');
+  console.log(n);
+")"
+echo "  native *.node addon count = $NATIVE_COUNT (0 expected: pure-JS production tree)"
+# Assert, don't just report: both build stages run under
+# --platform=$BUILDPLATFORM (cross-compile shape), so a native addon appearing
+# in the production tree would be built for the BUILD host's architecture and
+# crash at require() on the other release arch. Zero is a contract, not an
+# observation.
+[ "$NATIVE_COUNT" = "0" ] ||
+  fail "native addon(s) found in the production tree ($NATIVE_COUNT) — both builder stages run under --platform=\$BUILDPLATFORM, so any native addon is compiled for the build host's arch and breaks the other release architecture"
+
+# dist/ must be test-free: nest's SWC builder ignores tsconfig.prod.json's
+# exclude list, so this is enforced by .swcrc's top-level "exclude" — and
+# asserted here so a builder-config regression fails CI instead of shipping
+# test code (which imports vitest/@nestjs/testing, absent from prod deps).
+SPEC_IN_DIST="$(run_node -e "
+  const fs=require('fs'), p=require('path');
+  let n=0;
+  (function w(d){ for (const e of fs.readdirSync(d,{withFileTypes:true})) {
+    const f=p.join(d,e.name);
+    if (e.isDirectory()) w(f); else if (/\.(spec|test)\.js(\.map)?$/.test(e.name)) n++;
+  }})('/usr/src/app/dist');
+  console.log(n);
+")"
+[ "$SPEC_IN_DIST" = "0" ] ||
+  fail "dist/ ships $SPEC_IN_DIST spec/test artifact(s) — .swcrc's exclude is not taking effect"
+pass "dist/ is test-free (0 spec/test artifacts) and production tree is pure JS (0 native addons)"
+
+for m in yjs @hocuspocus/server @nestjs/core @nestjs/platform-fastify amqplib winston yaml; do
+  OUT="$(run_node -e "
+    const { createRequire } = require('module');
+    const r = createRequire('/usr/src/app/');
+    r(process.argv[1]);
+    console.log('ok');
+  " "$m" 2>&1)" || fail "dependency '$m' failed to load: $OUT"
+  [ "$OUT" = "ok" ] || fail "dependency '$m' failed to load: $OUT"
+done
+pass "runtime dependencies load: yjs, @hocuspocus/server, @nestjs/core, @nestjs/platform-fastify, amqplib, winston, yaml"
+
+# --- the built artifact is loadable ----------------------------------------
+[ "$(exists_in_image /usr/src/app/dist/main.js)" = "true" ] ||
+  fail "dist/main.js is missing"
+pass "dist/main.js is present"
+
+# --- size: assert NO REGRESSION (see header note) --------------------------
+echo "-- size --"
+IMAGE_DIGEST="$(docker inspect "$IMAGE" --format '{{.Id}}')"
+# `docker inspect .Size`, NOT `docker save | wc -c`. On a CI runner that has
+# just built a multi-arch image, `docker save` streams every architecture in
+# the build cache, so the tar is ~3x the single-arch image and the tolerance
+# check fails against a correct image (observed: 188 MB "size" for a 60 MB
+# amd64 image). `.Size` is the sum of the layers of THIS image only, so it is
+# architecture-correct on any runner. Verified locally that the two agree on a
+# single-arch build (60,164,096 save vs 60,127,845 layer sum).
+# Sum the layer sizes from `docker history` rather than `docker inspect .Size`:
+# on a containerd-snapshotter daemon .Size counts only layers unique to this
+# image, so the same image measures ~60 MB locally and ~179 MB on CI. The
+# history sum is store-independent and comparable to the baseline above.
+IMAGE_SIZE_BYTES="$(docker history --no-trunc --format '{{.Size}}' "$IMAGE" | awk '
+  /^[0-9.]+ *[kMG]?B$/ {
+    v=$0; sub(/ *[kMG]?B$/,"",v); u=$0; sub(/^[0-9.]+ */,"",u);
+    m = (u=="kB")?1000 : (u=="MB")?1000000 : (u=="GB")?1000000000 : 1;
+    total += v*m
+  } END { printf "%d", total }')"
+echo "IMAGE_DIGEST=$IMAGE_DIGEST"
+echo "IMAGE_SIZE_BYTES=$IMAGE_SIZE_BYTES"
+echo "BASELINE_IMAGE_SIZE_BYTES=$BASELINE_IMAGE_SIZE_BYTES"
+
+# Diagnostic breakdown, always printed: when this gate fails, the first
+# question is always "which layer grew", and reproducing a CI-only size
+# difference without this costs a round trip per guess.
+echo "-- size breakdown --"
+docker history --no-trunc --format '{{.Size}}\t{{.CreatedBy}}' "$IMAGE" 2>/dev/null \
+  | awk -F'\t' '$1 !~ /^0B$/ { cmd=$2; gsub(/\s+/," ",cmd); printf "  %-10s %s\n", $1, substr(cmd,1,110) }' \
+  | head -12 || true
+run_node -e "
+const fs=require('fs');
+const roots=['/usr/src/app/node_modules','/usr/src/app/dist'];
+for (const r of roots) {
+  let n=0,b=0;
+  try {
+    (function w(d){ for (const e of fs.readdirSync(d,{withFileTypes:true})) {
+      const f=d+'/'+e.name;
+      if (e.isSymbolicLink()) continue;          // pnpm layout: don't double-count
+      if (e.isDirectory()) w(f); else { n++; try { b+=fs.lstatSync(f).size } catch {} }
+    }})(r);
+  } catch { continue }
+  console.log('  ' + r + ': ' + (b/1048576).toFixed(1) + ' MB in ' + n + ' real files');
+}" 2>/dev/null || true
+
+DELTA_PCT="$(awk -v new="$IMAGE_SIZE_BYTES" -v old="$BASELINE_IMAGE_SIZE_BYTES" \
+  'BEGIN { printf "%.2f", ((new / old) - 1) * 100 }')"
+echo "SIZE_DELTA_PCT=$DELTA_PCT"
+
+awk -v d="$DELTA_PCT" -v max="$MAX_GROWTH_PCT" 'BEGIN { exit !(d <= max) }' ||
+  fail "image grew ${DELTA_PCT}% vs baseline, above the ${MAX_GROWTH_PCT}% tolerance"
+pass "size delta ${DELTA_PCT}% is within the +${MAX_GROWTH_PCT}% tolerance"
+
+echo "== distroless-image-smoke: ALL CHECKS PASSED =="

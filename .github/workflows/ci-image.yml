@@ -1,0 +1,99 @@
+name: CI Image
+
+# workspace#036-distroless-wave-1 (sub-wave W1b) · epic alkem-io/infrastructure-operations#2499
+#
+# Guards the runtime-image contract established by 036. Without this job the three
+# coupled changes in the Dockerfile (digest pinning, the prod-deps stage split, and
+# the debian13 runtime) can each silently regress in a later PR, since nothing else
+# in CI builds the image.
+#
+# The release build (build-release-docker-hub.yml) publishes linux/amd64,linux/arm64,
+# so this workflow also proves BOTH architectures still build — a per-architecture
+# child digest accidentally pasted into a FROM line breaks only the arm64 leg and
+# would otherwise surface for the first time at release time.
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # Fails if any FROM lost its @sha256: pin. Duplicated from the smoke harness
+      # so the cheapest, highest-signal check reports before the build runs.
+      - name: Assert every base image is digest-pinned
+        run: |
+          set -euo pipefail
+          if grep -E '^\s*FROM ' Dockerfile | grep -v '@sha256:'; then
+            echo "::error::Every FROM in the Dockerfile must be digest-pinned (@sha256:). Floating tags break reproducible builds."
+            exit 1
+          fi
+          echo "All FROM lines are digest-pinned."
+
+      # Proves the arm64 leg of the release build still resolves. Not loaded into
+      # the daemon: a multi-platform result cannot be loaded into the classic
+      # docker image store.
+      #
+      # NOTE: this step writes NO cache. It previously used
+      # `cache-to: type=gha,mode=max`, whose entries carry BOTH architectures'
+      # layers; the single-arch smoke build below then restored them via
+      # `cache-from` and `docker inspect .Size` reported ~179 MB for a 60 MB
+      # amd64 image, failing the size gate against a correct build. Scoping the
+      # multi-arch proof to a cache-less run keeps the measured image honest.
+      - name: Build both release architectures
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+
+      # Single-arch load so the smoke harness can actually run containers.
+      - name: Build amd64 image for smoke test
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          tags: alkemio/collaborative-document-service:ci-smoke
+
+      - name: Distroless image smoke test
+        run: bash .docker/distroless-image-smoke.sh alkemio/collaborative-document-service:ci-smoke
+
+      # Zero fixable HIGH/CRITICAL is the 036 acceptance gate. Unfixable OS-level
+      # findings are recorded as residual risk and deliberately do not fail here
+      # (--ignore-unfixed): nothing in this repo can act on them.
+      #
+      # Run the scanner as a pinned CONTAINER rather than via
+      # aquasecurity/trivy-action. The action re-clones the trivy repo and runs
+      # its contrib/install.sh on every job; that installer exited 1 here before
+      # the scan ever started, failing the gate for a reason unrelated to the
+      # image. The container image is immutable, needs no install step, and is
+      # the same mechanism used to produce this feature's evidence bundle.
+      - name: Trivy scan (fail on fixable HIGH/CRITICAL)
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "${{ github.workspace }}/.cache/trivy:/root/.cache/trivy" \
+            aquasec/trivy:0.67.0 \
+            image \
+              --severity HIGH,CRITICAL \
+              --ignore-unfixed \
+              --scanners vuln \
+              --exit-code 1 \
+              --format table \
+              alkemio/collaborative-document-service:ci-smoke
