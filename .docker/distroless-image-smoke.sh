@@ -251,7 +251,14 @@ pass "dist/main.js is present"
 # --- size: assert NO REGRESSION (see header note) --------------------------
 echo "-- size --"
 IMAGE_DIGEST="$(docker inspect "$IMAGE" --format '{{.Id}}')"
-IMAGE_SIZE_BYTES="$(docker save "$IMAGE" | wc -c)"
+# `docker inspect .Size`, NOT `docker save | wc -c`. On a CI runner that has
+# just built a multi-arch image, `docker save` streams every architecture in
+# the build cache, so the tar is ~3x the single-arch image and the tolerance
+# check fails against a correct image (observed: 188 MB "size" for a 60 MB
+# amd64 image). `.Size` is the sum of the layers of THIS image only, so it is
+# architecture-correct on any runner. Verified locally that the two agree on a
+# single-arch build (60,164,096 save vs 60,127,845 layer sum).
+IMAGE_SIZE_BYTES="$(docker inspect "$IMAGE" --format '{{.Size}}')"
 echo "IMAGE_DIGEST=$IMAGE_DIGEST"
 echo "IMAGE_SIZE_BYTES=$IMAGE_SIZE_BYTES"
 echo "BASELINE_IMAGE_SIZE_BYTES=$BASELINE_IMAGE_SIZE_BYTES"
