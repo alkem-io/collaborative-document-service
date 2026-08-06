@@ -98,18 +98,21 @@ FROM gcr.io/distroless/nodejs22-debian13:nonroot@sha256:939d6f1671529d230f50b563
 WORKDIR /usr/src/app
 
 # Copy compiled artifacts and production dependencies.
-# NOTE: this repo uses NAME-based `--chown=nonroot:nonroot` plus an explicit
-# `USER nonroot`, unlike notifications / whiteboard-collaboration-service which use
-# numeric 65532. That difference is intentional and preserved — do not harmonise.
-COPY --from=proddeps --chown=nonroot:nonroot /usr/src/app/node_modules ./node_modules
-COPY --from=build    --chown=nonroot:nonroot /usr/src/app/dist ./dist
+# NUMERIC 65532, not the `nonroot` name form this repo previously used. The
+# kubelet cannot resolve a non-numeric image user, so any Pod setting
+# `runAsNonRoot: true` fails with "image has non-numeric user (nonroot),
+# cannot verify user is non-root" and the container never starts. Proven on
+# k8s-hetzner-sandbox during 036 verification; harmonised with the
+# notifications / whiteboard-collaboration-service peers.
+COPY --from=proddeps --chown=65532:65532 /usr/src/app/node_modules ./node_modules
+COPY --from=build    --chown=65532:65532 /usr/src/app/dist ./dist
 # config.yml is read at boot by the config loader — it must be in the image.
-COPY --from=build    --chown=nonroot:nonroot /usr/src/app/config.yml ./config.yml
-COPY --from=build    --chown=nonroot:nonroot /usr/src/app/package.json ./package.json
+COPY --from=build    --chown=65532:65532 /usr/src/app/config.yml ./config.yml
+COPY --from=build    --chown=65532:65532 /usr/src/app/package.json ./package.json
 
 ENV NODE_ENV=production
 
-USER nonroot
+USER 65532:65532
 
 EXPOSE 4004
 
