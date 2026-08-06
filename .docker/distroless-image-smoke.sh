@@ -35,7 +35,14 @@
 set -euo pipefail
 
 IMAGE="${1:?usage: distroless-image-smoke.sh <image> [baseline_size_bytes]}"
-BASELINE_IMAGE_SIZE_BYTES="${2:-58200576}"
+# Baseline = the pre-036 debian12 image, measured the SAME way as the value
+# compared against it (docker history layer sum). An earlier constant of
+# 58,200,576 came from `docker inspect .Size` on a containerd-snapshotter
+# daemon, which counts only layers UNIQUE to that image — it under-reports a
+# shared base by ~3x. CI's daemon reports the full size, so a correct image
+# "grew 207%" against that phantom baseline. Measured truth: baseline 267 MB,
+# this image 274 MB (+2.6%).
+BASELINE_IMAGE_SIZE_BYTES="${2:-267000000}"
 # Allow +5%: the runtime OS moved debian12 -> debian13 and its base layer size is
 # not under this repo's control. Growth beyond that is a real regression.
 MAX_GROWTH_PCT=5
@@ -258,10 +265,41 @@ IMAGE_DIGEST="$(docker inspect "$IMAGE" --format '{{.Id}}')"
 # amd64 image). `.Size` is the sum of the layers of THIS image only, so it is
 # architecture-correct on any runner. Verified locally that the two agree on a
 # single-arch build (60,164,096 save vs 60,127,845 layer sum).
-IMAGE_SIZE_BYTES="$(docker inspect "$IMAGE" --format '{{.Size}}')"
+# Sum the layer sizes from `docker history` rather than `docker inspect .Size`:
+# on a containerd-snapshotter daemon .Size counts only layers unique to this
+# image, so the same image measures ~60 MB locally and ~179 MB on CI. The
+# history sum is store-independent and comparable to the baseline above.
+IMAGE_SIZE_BYTES="$(docker history --no-trunc --format '{{.Size}}' "$IMAGE" | awk '
+  /^[0-9.]+ *[kMG]?B$/ {
+    v=$0; sub(/ *[kMG]?B$/,"",v); u=$0; sub(/^[0-9.]+ */,"",u);
+    m = (u=="kB")?1000 : (u=="MB")?1000000 : (u=="GB")?1000000000 : 1;
+    total += v*m
+  } END { printf "%d", total }')"
 echo "IMAGE_DIGEST=$IMAGE_DIGEST"
 echo "IMAGE_SIZE_BYTES=$IMAGE_SIZE_BYTES"
 echo "BASELINE_IMAGE_SIZE_BYTES=$BASELINE_IMAGE_SIZE_BYTES"
+
+# Diagnostic breakdown, always printed: when this gate fails, the first
+# question is always "which layer grew", and reproducing a CI-only size
+# difference without this costs a round trip per guess.
+echo "-- size breakdown --"
+docker history --no-trunc --format '{{.Size}}\t{{.CreatedBy}}' "$IMAGE" 2>/dev/null \
+  | awk -F'\t' '$1 !~ /^0B$/ { cmd=$2; gsub(/\s+/," ",cmd); printf "  %-10s %s\n", $1, substr(cmd,1,110) }' \
+  | head -12 || true
+run_node -e "
+const fs=require('fs');
+const roots=['/usr/src/app/node_modules','/usr/src/app/dist'];
+for (const r of roots) {
+  let n=0,b=0;
+  try {
+    (function w(d){ for (const e of fs.readdirSync(d,{withFileTypes:true})) {
+      const f=d+'/'+e.name;
+      if (e.isSymbolicLink()) continue;          // pnpm layout: don't double-count
+      if (e.isDirectory()) w(f); else { n++; try { b+=fs.lstatSync(f).size } catch {} }
+    }})(r);
+  } catch { continue }
+  console.log('  ' + r + ': ' + (b/1048576).toFixed(1) + ' MB in ' + n + ' real files');
+}" 2>/dev/null || true
 
 DELTA_PCT="$(awk -v new="$IMAGE_SIZE_BYTES" -v old="$BASELINE_IMAGE_SIZE_BYTES" \
   'BEGIN { printf "%.2f", ((new / old) - 1) * 100 }')"
