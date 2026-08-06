@@ -77,12 +77,23 @@ jobs:
       # Zero fixable HIGH/CRITICAL is the 036 acceptance gate. Unfixable OS-level
       # findings are recorded as residual risk and deliberately do not fail here
       # (--ignore-unfixed): nothing in this repo can act on them.
+      #
+      # Run the scanner as a pinned CONTAINER rather than via
+      # aquasecurity/trivy-action. The action re-clones the trivy repo and runs
+      # its contrib/install.sh on every job; that installer exited 1 here before
+      # the scan ever started, failing the gate for a reason unrelated to the
+      # image. The container image is immutable, needs no install step, and is
+      # the same mechanism used to produce this feature's evidence bundle.
       - name: Trivy scan (fail on fixable HIGH/CRITICAL)
-        uses: aquasecurity/trivy-action@b6643a29fecd7f34b3597bc6acb0a98b03d33ff8 # v0.33.1
-        with:
-          image-ref: alkemio/collaborative-document-service:ci-smoke
-          format: table
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-          scanners: vuln
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "${{ github.workspace }}/.cache/trivy:/root/.cache/trivy" \
+            aquasec/trivy:0.67.0 \
+            image \
+              --severity HIGH,CRITICAL \
+              --ignore-unfixed \
+              --scanners vuln \
+              --exit-code 1 \
+              --format table \
+              alkemio/collaborative-document-service:ci-smoke
