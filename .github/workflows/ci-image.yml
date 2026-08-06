@@ -45,6 +45,13 @@ jobs:
       # Proves the arm64 leg of the release build still resolves. Not loaded into
       # the daemon: a multi-platform result cannot be loaded into the classic
       # docker image store.
+      #
+      # NOTE: this step writes NO cache. It previously used
+      # `cache-to: type=gha,mode=max`, whose entries carry BOTH architectures'
+      # layers; the single-arch smoke build below then restored them via
+      # `cache-from` and `docker inspect .Size` reported ~179 MB for a 60 MB
+      # amd64 image, failing the size gate against a correct build. Scoping the
+      # multi-arch proof to a cache-less run keeps the measured image honest.
       - name: Build both release architectures
         uses: docker/build-push-action@v7
         with:
@@ -52,8 +59,6 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
       # Single-arch load so the smoke harness can actually run containers.
       - name: Build amd64 image for smoke test
@@ -65,7 +70,6 @@ jobs:
           push: false
           load: true
           tags: alkemio/collaborative-document-service:ci-smoke
-          cache-from: type=gha
 
       - name: Distroless image smoke test
         run: bash .docker/distroless-image-smoke.sh alkemio/collaborative-document-service:ci-smoke
