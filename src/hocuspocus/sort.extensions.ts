@@ -1,4 +1,4 @@
-import { Extension } from "@hocuspocus/server";
+import { Extension } from '@hocuspocus/server';
 
 /**
  * Assigns a sort order to extensions based on their order in the array,

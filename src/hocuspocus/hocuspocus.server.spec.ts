@@ -3,8 +3,14 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mock, MockProxy } from 'vitest-mock-extended';
 import { ConfigService } from '@nestjs/config';
 import { HocuspocusServer } from './hocuspocus.server';
-import { AlkemioAuthenticator, ALKEMIO_AUTHENTICATION_EXTENSION } from './extensions/authentication/alkemio-authenticator';
-import { AlkemioAuthorizer, ALKEMIO_AUTHORIZATION_EXTENSION } from './extensions/authorization/alkemio-authorizer';
+import {
+  AlkemioAuthenticator,
+  ALKEMIO_AUTHENTICATION_EXTENSION,
+} from './extensions/authentication/alkemio-authenticator';
+import {
+  AlkemioAuthorizer,
+  ALKEMIO_AUTHORIZATION_EXTENSION,
+} from './extensions/authorization/alkemio-authorizer';
 import { AlkemioStorage, ALKEMIO_STORAGE_EXTENSION } from './extensions/storage/alkemio-storage';
 import { NorthStarMetric, NORTH_STAR_METRIC_EXTENSION } from './extensions/north-star-metric';
 import { Server, Hocuspocus } from '@hocuspocus/server';
@@ -83,7 +89,9 @@ describe('HocuspocusServer', () => {
       await service.onModuleInit();
 
       // Assert
-      expect(mockConfigService.get).toHaveBeenCalledWith('settings.application.ws_port', { infer: true });
+      expect(mockConfigService.get).toHaveBeenCalledWith('settings.application.ws_port', {
+        infer: true,
+      });
       expect(service.getServer().configuration.port).toEqual(expectedPort);
     });
   });
@@ -123,4 +131,3 @@ describe('HocuspocusServer', () => {
     });
   });
 });
-
