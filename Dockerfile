@@ -93,7 +93,7 @@ COPY package.json pnpm-lock.yaml .npmrc ./
 RUN corepack enable pnpm && pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # Stage 3: distroless runtime
-FROM gcr.io/distroless/nodejs22-debian13:nonroot@sha256:939d6f1671529d230f50b563578e9b5d206af58f038b10ebd7e1233023d4e167
+FROM gcr.io/distroless/nodejs22-debian13:nonroot@sha256:22d2f0480e59548ad14cf10d8921b24ef809780e7a61b162838f3d15a4a92e3d
 
 WORKDIR /usr/src/app
 
