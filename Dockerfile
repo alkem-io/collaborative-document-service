@@ -56,7 +56,7 @@
 # ---------------------------------------------------------------------------
 
 # Stage 1: compile TypeScript -> dist/
-FROM --platform=$BUILDPLATFORM node:22.23.2-trixie-slim@sha256:db8a96a63e5264607ada2d206758876ebbed6a12be2ada7517793cbfb0c2a29c AS build
+FROM --platform=$BUILDPLATFORM node:22.23.2-trixie-slim@sha256:7b8a0c89c54499bee567618f96578e1a12a800f062fbdbfd1fb6a443fa6f6284 AS build
 
 WORKDIR /usr/src/app
 
@@ -81,7 +81,7 @@ RUN pnpm run build \
                  -o -name '*.test.js' -o -name '*.test.js.map' \) -delete
 
 # Stage 2: resolve production-only dependencies from the lockfile
-FROM --platform=$BUILDPLATFORM node:22.23.2-trixie-slim@sha256:db8a96a63e5264607ada2d206758876ebbed6a12be2ada7517793cbfb0c2a29c AS proddeps
+FROM --platform=$BUILDPLATFORM node:22.23.2-trixie-slim@sha256:7b8a0c89c54499bee567618f96578e1a12a800f062fbdbfd1fb6a443fa6f6284 AS proddeps
 
 WORKDIR /usr/src/app
 
